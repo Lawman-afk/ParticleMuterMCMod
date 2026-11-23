@@ -37,6 +37,11 @@ public final class Muting {
         return !blockHits;
     }
 
+    /** Whether the bits off a block being mined are hidden now (no count: for a hook in front of the counted one). */
+    public static boolean hidesBlockHits() {
+        return blockHits;
+    }
+
     /** Whether an item flies to the player picking it up. */
     public static boolean keepItemPickup() {
         Tracker.count(Catalog.ITEM_PICKUP);
