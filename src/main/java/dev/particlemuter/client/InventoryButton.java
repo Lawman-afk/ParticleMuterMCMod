@@ -136,7 +136,7 @@ public final class InventoryButton extends AbstractWidget {
         }
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             playDownSound(Minecraft.getInstance().getSoundManager());
-            Minecraft.getInstance().gui.setScreen(new MuterScreen(screen));
+            Minecraft.getInstance().setScreen(new MuterScreen(screen));
             return true;
         }
         if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {

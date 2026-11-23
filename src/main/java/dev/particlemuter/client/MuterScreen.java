@@ -471,6 +471,6 @@ public final class MuterScreen extends Screen {
         if (newlyMuted) {
             Muting.clearLiving();                               // (the ones already flying go too, not as they fade)
         }
-        Minecraft.getInstance().gui.setScreen(parent);
+        Minecraft.getInstance().setScreen(parent);
     }
 }

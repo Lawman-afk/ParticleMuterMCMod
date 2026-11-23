@@ -28,7 +28,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.FileUtil;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.GameType;
@@ -43,7 +43,7 @@ import net.minecraft.world.level.block.NetherPortalBlock;
 import net.minecraft.world.level.block.StandingSignBlock;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
-import net.minecraft.world.level.block.entity.SignTextSlot;
+
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
@@ -92,13 +92,13 @@ public final class Lab {
         }
         Minecraft mc = Minecraft.getInstance();
         mc.options.pauseOnLostFocus = false;
-        if (mc.gui.screen() instanceof net.minecraft.client.gui.screens.PauseScreen) {
-            mc.gui.setScreen(null);
+        if (mc.screen instanceof net.minecraft.client.gui.screens.PauseScreen) {
+            mc.setScreen(null);
         }
         if (mc.options.tutorialStep != net.minecraft.client.tutorial.TutorialSteps.NONE) {
             mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
         }
-        if (mc.level == null && !worldMade && mc.gui.screen() instanceof net.minecraft.client.gui.screens.TitleScreen) {
+        if (mc.level == null && !worldMade && mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen) {
             worldMade = true;
             // As a player who has never used the mod: nothing muted, the button in its default place.
             Settings.unmuteAll();
@@ -111,7 +111,7 @@ public final class Lab {
                 var settings = new LevelSettings("Particle Lab", GameType.CREATIVE, LevelSettings.DifficultySettings.DEFAULT, true,
                         WorldDataConfiguration.DEFAULT);
                 mc.createWorldOpenFlows().createFreshLevel(fresh(mc, "particle_lab"), settings, new WorldOptions(0L, false, false), Lab::flat,
-                        mc.gui.screen());
+                        mc.screen);
             } catch (IOException e) {
                 ParticleMuter.LOGGER.error("Lab: could not make a world", e);
             }
@@ -130,8 +130,8 @@ public final class Lab {
         if (++waited < SETTLE) {
             return;
         }
-        if (mc.gui.hud.isHidden() == false) {
-            mc.gui.hud.toggle();                                   // no hand or hotbar in the pictures
+        if (mc.options.hideGui == false) {
+            mc.options.hideGui = !mc.options.hideGui;                                   // no hand or hotbar in the pictures
         }
         // Each view: the camera and the screen set, a wait for the frame to settle, the picture.
         int t = ++shot;
@@ -141,7 +141,7 @@ public final class Lab {
         int step = t / EACH;
         if (step > 1 && step - 2 < views.size()) {
             View v = views.get(step - 2);
-            Screenshot.grab(mc.gameDirectory, "lab_" + v.name() + ".png", mc.gameRenderer.mainRenderTarget(), 1,
+            Screenshot.grab(mc.gameDirectory, "lab_" + v.name() + ".png", mc.getMainRenderTarget(), 1,
                     msg -> ParticleMuter.LOGGER.info("Lab: {}", msg.getString()));
         }
         if (step - 1 < views.size()) {
@@ -152,7 +152,7 @@ public final class Lab {
             return;
         }
         if (step - 1 == views.size()) {
-            mc.gui.setScreen(null);
+            mc.setScreen(null);
             finish(mc);
             server.execute(() -> server.getPlayerList().getPlayers().getFirst()
                     .teleportTo(server.overworld(), 0.5, ground, 0.5, Set.of(), 0f, 10f, true));
@@ -302,7 +302,7 @@ public final class Lab {
         BlockPos spawner = new BlockPos(11, y, z);
         level.setBlock(spawner, Blocks.SPAWNER.defaultBlockState(), 3);
         if (level.getBlockEntity(spawner) instanceof SpawnerBlockEntity be) {
-            be.setEntityId(EntityTypes.PIG, level.getRandom());
+            be.setEntityId(EntityType.PIG, level.getRandom());
             be.setChanged();
         }
         sign(level, 11, y, z - 2, "Spawner:", "flame and", "smoke", "");
@@ -346,20 +346,20 @@ public final class Lab {
         Vec3 front = new Vec3(0.5, y + 6.0, -10.0);
         Vec3 fires = new Vec3(-19.0, y + 2.4, z - 6.0);
         List<View> list = new ArrayList<>();
-        list.add(new View("overview", new Vec3(2.5, y + 14.0, -16.0), 0f, 32f, mc -> mc.gui.setScreen(null)));
+        list.add(new View("overview", new Vec3(2.5, y + 14.0, -16.0), 0f, 32f, mc -> mc.setScreen(null)));
         list.add(new View("campfires", fires, 0f, -6f, mc -> {
-            mc.gui.setScreen(null);
+            mc.setScreen(null);
             checkCatalog();
             particlesBefore = particles(mc);
         }));
         list.add(new View("inventory", front, 0f, 20f, mc -> {
             run(mc, "gamemode survival @a");
-            mc.gui.setScreen(new InventoryScreen(mc.player));
+            mc.setScreen(new InventoryScreen(mc.player));
         }));
         list.add(new View("inventory_creative", front, 0f, 20f, mc -> {
             run(mc, "gamemode creative @a");
             var screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), false);
-            mc.gui.setScreen(screen);
+            mc.setScreen(screen);
             selectInventoryTab(screen);
         }));
         list.add(new View("screen_all", front, 0f, 20f, mc -> screen(mc, "all", "")));
@@ -378,8 +378,8 @@ public final class Lab {
             screen(mc, "muted", "");
         }));
         list.add(new View("campfires_muted", fires, 0f, -6f, mc -> {
-            mc.gui.screen().onClose();                             // (closing the list takes away the smoke already rising)
-            mc.gui.setScreen(null);
+            mc.screen.onClose();                             // (closing the list takes away the smoke already rising)
+            mc.setScreen(null);
         }));
         list.add(new View("campfires_muted_later", fires, 0f, -6f, mc -> {
             int after = particles(mc);
@@ -405,9 +405,9 @@ public final class Lab {
 
     /** The list, from the inventory as its button opens it, showing that list and search. */
     private static void screen(Minecraft mc, String list, String search) {
-        MuterScreen screen = mc.gui.screen() instanceof MuterScreen open ? open : new MuterScreen(new InventoryScreen(mc.player));
-        if (mc.gui.screen() != screen) {
-            mc.gui.setScreen(screen);
+        MuterScreen screen = mc.screen instanceof MuterScreen open ? open : new MuterScreen(new InventoryScreen(mc.player));
+        if (mc.screen != screen) {
+            mc.setScreen(screen);
         }
         screen.showForPicture(list, search);
     }
@@ -432,11 +432,11 @@ public final class Lab {
         BlockPos at = new BlockPos(x, y, z);
         level.setBlock(at, Blocks.OAK_SIGN.defaultBlockState().setValue(StandingSignBlock.ROTATION, 8), 3);
         if (level.getBlockEntity(at) instanceof SignBlockEntity sign) {
-            SignText.Mutable text = sign.getText(SignTextSlot.FRONT).asMutable();
+            SignText text = sign.getText(true);
             for (int i = 0; i < Math.min(4, lines.length); i++) {
-                text.setLine(i, Component.literal(lines[i]));
+                text = text.setMessage(i, Component.literal(lines[i]));
             }
-            sign.setText(text.asImmutable(), SignTextSlot.FRONT);
+            sign.setText(text, true);
             sign.setChanged();
             level.sendBlockUpdated(at, sign.getBlockState(), sign.getBlockState(), 3);
         }
@@ -450,7 +450,7 @@ public final class Lab {
                 .withBiomeAndLayers(List.of(new FlatLayerInfo(1, Blocks.BEDROCK), new FlatLayerInfo(20, Blocks.STONE),
                         new FlatLayerInfo(3, Blocks.DIRT), new FlatLayerInfo(1, Blocks.GRASS_BLOCK)),
                         java.util.Optional.empty(), biomes.getOrThrow(Biomes.PLAINS));
-        return WorldPresets.createTestWorldDimensions(registries).replaceOverworldGenerator(registries, new FlatLevelSource(settings));
+        return WorldPresets.createFlatWorldDimensions(registries).replaceOverworldGenerator(registries, new FlatLevelSource(settings));
     }
 
     /** Deletes the worlds earlier runs left under {@code name} and gives the folder for this run's. */
