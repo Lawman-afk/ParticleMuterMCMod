@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.particlemuter.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ClientLevelMixin",
+    "ClientPacketListenerMixin",
+    "DevMouseMixin",
+    "ParticleEngineAccessor",
+    "ParticleEngineMixin",
+    "ParticleResourcesAccessor",
+    "ParticleTypeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

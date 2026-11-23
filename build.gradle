@@ -1,0 +1,240 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    // Extreme Sound Muffler (-PwithESM), Iris and Sodium (-PwithIris), as released: compatibility runs only, never
+    // dependencies of the mod.
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'Modrinth'
+                url = 'https://api.modrinth.com/maven'
+            }
+        }
+        filter {
+            includeGroup 'maven.modrinth'
+        }
+    }
+}
+
+base {
+    archivesName = mod_id
+}
+
+// The licence travels in the jar (MIT asks for its notice in every copy); the dev aid (the prepared test world and
+// its photographer) is for the dev runs only, never in a released jar.
+tasks.named('jar', Jar) {
+    def licenceName = "LICENSE_${project.property('mod_id')}"
+    from('LICENSE') {
+        rename { licenceName }
+    }
+    exclude('dev/particlemuter/devworld/**')
+}
+
+// Mojang ships Java 25 to players in 26.3, so the mod targets Java 25.
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+// The photographer's window, width x height: -PshotSize=1920x1080 for the mod page's gallery pictures.
+def shotSize = (project.findProperty('shotSize') ?: '1280x720').toString().split('x')
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+        }
+
+        // Makes the test world "Particle Lab" (run/saves/particle_lab) with particle sources set out and signs saying
+        // what to try, checks the muting, photographs the inventory button and the screen into
+        // run/screenshots/lab_*.png and quits, the world saved to copy into the test instance's saves (devworld, left
+        // out of the jar).
+        lab {
+            client()
+            programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
+            systemProperty 'particlemuter.lab', 'true'
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            if (providers.gradleProperty('withIris').isPresent()) {
+                systemProperty 'neoforge.disableBlaze3DValidation', 'true'
+            }
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+// Runtime-only dependencies for dev testing that must not leak into the published metadata.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    // Extreme Sound Muffler (optional at runtime): -PwithESM runs it in the dev client, to check the button beside its.
+    if (providers.gradleProperty('withESM').isPresent()) {
+        localRuntime "maven.modrinth:extreme_sound_muffler:${esm_version}"
+    }
+    // Shader packs (optional at runtime): -PwithIris runs Iris and Sodium in the dev client.
+    if (providers.gradleProperty('withIris').isPresent()) {
+        localRuntime "maven.modrinth:iris:${iris_version}"
+        localRuntime "maven.modrinth:sodium:${sodium_version}"
+    }
+}
+
+// The test runs leave the person at the computer their mouse and their ears (the user's wishes): their window shows
+// behind the other windows without the focus and never grabs the mouse (dev.particlemuter.client.DevRuns, set by
+// particlemuter.keepMouse; the runs move the camera themselves), NeoForge's early loading window turned off for them in
+// run/config/fml.toml; every client run is muted (master volume 0 in run/options.txt; -Psound=on keeps the sound) and
+// skips the first-launch accessibility screen.
+def testRunNames = ['runLab']
+def fmlConfig = file('run/config/fml.toml')
+def clientOptions = file('run/options.txt')
+def withSound = providers.gradleProperty('sound').isPresent()
+neoForge.runs.matching { ('run' + it.name.capitalize()) in testRunNames }.configureEach {
+    systemProperty 'particlemuter.keepMouse', 'true'
+}
+tasks.matching { it.name in testRunNames }.configureEach {
+    doFirst {
+        fmlConfig.parentFile.mkdirs()
+        String text = fmlConfig.exists() ? fmlConfig.text : ''
+        fmlConfig.text = text =~ /(?m)^earlyWindowControl\s*=/
+                ? text.replaceAll(/(?m)^earlyWindowControl\s*=.*$/, 'earlyWindowControl = false')
+                : text + 'earlyWindowControl = false\n'
+    }
+}
+tasks.matching { it.name.startsWith('run') }.configureEach {
+    doFirst {
+        String text = clientOptions.exists() ? clientOptions.text : ''
+        clientOptions.parentFile.mkdirs()
+        if (!withSound) {
+            text = text =~ /(?m)^soundCategory_master:/
+                    ? text.replaceAll(/(?m)^soundCategory_master:.*$/, 'soundCategory_master:0.0')
+                    : text + 'soundCategory_master:0.0\n'
+        }
+        text = text =~ /(?m)^onboardAccessibility:/
+                ? text.replaceAll(/(?m)^onboardAccessibility:.*$/, 'onboardAccessibility:false')
+                : text + 'onboardAccessibility:false\n'
+        clientOptions.text = text
+    }
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Deployment: every `build` ends with the fresh jar in the CurseForge test instance that `particlemuter_instance_dir`
+// names (set in your own ~/.gradle/gradle.properties); without one the jar just stays in build/libs.
+// ---------------------------------------------------------------------------------------------
+
+abstract class DeployToInstance extends DefaultTask {
+    @InputFile
+    abstract RegularFileProperty getJarFile()
+
+    @Internal
+    abstract DirectoryProperty getModsDir()
+
+    @Input
+    abstract Property<String> getModId()
+
+    /** Whether an instance folder was named outright: then a missing one is an error. */
+    @Input
+    abstract Property<Boolean> getRequired()
+
+    @Inject
+    abstract FileSystemOperations getFs()
+
+    @TaskAction
+    void deploy() {
+        File dir = modsDir.isPresent() ? modsDir.get().asFile : null
+        if (dir == null || !dir.parentFile.isDirectory()) {
+            String where = dir == null ? "(no folder set on this system)" : "${dir.parentFile}"
+            if (required.get()) {
+                throw new GradleException("CurseForge instance not found at ${where}. " +
+                        "Set particlemuter_instance_dir in gradle.properties or pass -Pparticlemuter_instance_dir=<path>.")
+            }
+            logger.lifecycle("No CurseForge instance at ${where}: the jar was not deployed (set particlemuter_instance_dir to deploy it).")
+            return
+        }
+        dir.mkdirs()
+
+        // Remove every previous build of this mod (any version) so only one copy is ever loaded.
+        String prefix = modId.get() + '-'
+        dir.listFiles()
+                .findAll { it.isFile() && it.name.startsWith(prefix) && it.name.endsWith('.jar') }
+                .each { old ->
+                    if (!old.delete()) {
+                        throw new GradleException("Could not delete ${old} - is Minecraft still running from that instance?")
+                    }
+                    logger.lifecycle("Removed old jar ${old.name}")
+                }
+
+        File jar = jarFile.get().asFile
+        fs.copy {
+            from jar
+            into dir
+        }
+        logger.lifecycle("Deployed ${jar.name} -> ${dir}")
+    }
+}
+
+var instanceDir = providers.gradleProperty('particlemuter_instance_dir')
+        .filter { !it.isBlank() }
+
+var deployToInstance = tasks.register('deployToInstance', DeployToInstance) {
+    group = 'deployment'
+    description = 'Copies the built mod jar into the CurseForge test instance (particlemuter_instance_dir), replacing older builds.'
+    jarFile = tasks.named('jar', Jar).flatMap { it.archiveFile }
+    modsDir = layout.dir(instanceDir.map { new File(it, 'mods') })
+    modId = project.mod_id
+    required = providers.gradleProperty('particlemuter_instance_dir').map { !it.isBlank() }.orElse(false)
+    outputs.upToDateWhen { false }
+}
+
+tasks.named('build') {
+    finalizedBy deployToInstance
+}
