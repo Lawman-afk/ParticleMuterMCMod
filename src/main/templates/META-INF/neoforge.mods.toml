@@ -5,6 +5,12 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
+# The logo over the mod's details in the mod list (every version reads logoFile; 26.3 shows it as the banner), and the
+# small square 26.3 shows beside the mod's name in the list (iconFile); both drawn smoothly.
+logoFile="particlemuter_logo.png"
+logoBlur=true
+iconFile="particlemuter_icon.png"
+iconBlur=true
 description='''
 ${mod_description}
 '''

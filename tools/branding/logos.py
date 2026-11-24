@@ -50,6 +50,11 @@ GAP = 0.024                               # the gap a bar or slash cuts round it
 PINCH, TALL = 0.6, 1.12                   # the spark's shape: its sides drawn in, its up and down points longer
 LOGO = S.ROOT / "docs" / "branding" / "logo.png"
 ICON = S.ROOT / "docs" / "branding" / "icon.png"
+# The jar's own pictures (the mod file names them): the logo the mod list shows over a mod's details (its logoFile, and
+# 26.3's banner from it), and the small square 26.3 shows beside the mod's name in the list (its iconFile, 24 px a GUI
+# scale), each made at the size it is drawn so the game need not shrink a large picture.
+JAR_LOGO = S.ROOT / "src" / "main" / "resources" / "particlemuter_logo.png"
+JAR_ICON = S.ROOT / "src" / "main" / "resources" / "particlemuter_icon.png"
 
 
 def px(v: float) -> float:
@@ -505,6 +510,10 @@ def main():
         icon.alpha_composite(cut_out, ((side - cut_out.width) // 2, (side - cut_out.height) // 2))
         icon.resize((512, 512), Image.LANCZOS).save(ICON, optimize=True)
         print("chose", args.choose, "as", LOGO, "and its symbol as", ICON)
+        chosen = logos[args.choose].convert("RGB")
+        chosen.resize((128, 128), Image.LANCZOS).save(JAR_LOGO, optimize=True)
+        chosen.resize((64, 64), Image.LANCZOS).save(JAR_ICON, optimize=True)
+        print("and the jar's pictures as", JAR_LOGO.name, "and", JAR_ICON.name)
     print("wrote", ", ".join(logos), "to", out)
 
 
