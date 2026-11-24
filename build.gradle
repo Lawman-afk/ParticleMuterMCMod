@@ -64,6 +64,8 @@ neoForge {
             client()
             programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
             systemProperty 'particlemuter.lab', 'true'
+            // -PwithPack: the Lab makes and turns on a resource pack of its own that redraws some particles.
+            systemProperty 'particlemuter.pack', providers.gradleProperty('withPack').isPresent().toString()
         }
 
         configureEach {
@@ -79,6 +81,12 @@ neoForge {
     }
 }
 
+// -PirisStable: the released pair most 1.21.1 shader players have (Iris 1.8.12 asks for Sodium 0.6.13); without it the
+// newest (Iris 1.8.14's beta with Sodium 0.8).
+def irisStable = providers.gradleProperty('irisStable').isPresent()
+def irisVersion = irisStable ? iris_stable_version : iris_version
+def sodiumVersion = irisStable ? sodium_stable_version : sodium_version
+
 // Runtime-only dependencies for dev testing that must not leak into the published metadata.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
@@ -88,6 +96,19 @@ dependencies {
     // Extreme Sound Muffler (optional at runtime): -PwithESM runs it in the dev client, to check the button beside its.
     if (providers.gradleProperty('withESM').isPresent()) {
         localRuntime "maven.modrinth:extreme_sound_muffler:${esm_version}"
+    }
+    // Shader packs (optional at runtime): -PwithIris runs Iris and Sodium in the dev client (Sodium from run/mods,
+    // sodiumToMods below).
+    if (providers.gradleProperty('withIris').isPresent()) {
+        localRuntime "maven.modrinth:iris:${irisVersion}"
+    }
+    // Sodium Extra (its own particle switches; with -PwithIris, which brings Sodium): -PwithSodiumExtra.
+    if (providers.gradleProperty('withSodiumExtra').isPresent()) {
+        localRuntime "maven.modrinth:sodium-extra:${sodium_extra_version}"
+    }
+    // Distant Horizons (optional at runtime): -PwithDH.
+    if (providers.gradleProperty('withDH').isPresent()) {
+        localRuntime "maven.modrinth:distanthorizons:${dh_version}"
     }
     // Main's nullness annotations (26.x ships them; 1.21.1 does not): only to compile.
     compileOnly 'org.jspecify:jspecify:1.0.0'
@@ -128,6 +149,98 @@ tasks.matching { it.name.startsWith('run') }.configureEach {
                 : text + 'onboardAccessibility:false\n'
         clientOptions.text = text
     }
+}
+
+// The shader packs the dev runs test with (-PwithIris; -PirisPack=complementary|unbound|bsl|bliss|photon|solas|makeup|off
+// picks one, Complementary by default): put in run/shaderpacks, and Iris's config pointed at the one picked.
+configurations {
+    shaderPacks {
+        canBeConsumed = false
+        transitive = false
+    }
+}
+dependencies {
+    shaderPacks "maven.modrinth:complementary-reimagined:${complementary_version}@zip"
+    shaderPacks "maven.modrinth:bsl-shaders:${bsl_version}@zip"
+    shaderPacks "maven.modrinth:bliss-shader:${bliss_version}@zip"
+    shaderPacks "maven.modrinth:photon-shader:${photon_version}@zip"
+    shaderPacks "maven.modrinth:solas-shader:${solas_version}@zip"
+    shaderPacks "maven.modrinth:makeup-ultra-fast-shaders:${makeup_version}@zip"
+    shaderPacks "maven.modrinth:complementary-unbound:${unbound_version}@zip"
+}
+var installShaderPacks = tasks.register('installShaderPacks') {
+    group = 'development'
+    description = 'Puts the test shader packs in run/shaderpacks and sets Iris to the one -PirisPack names.'
+    var packs = configurations.shaderPacks
+    var pick = (project.findProperty('irisPack') ?: 'complementary').toString()
+    var runDir = file('run')
+    inputs.files(packs)
+    outputs.upToDateWhen { false }
+    doLast {
+        var dir = new File(runDir, 'shaderpacks')
+        dir.mkdirs()
+        // Each pack's file by the name -PirisPack picks it by.
+        var names = ['complementary-reimagined': 'complementary', 'complementary-unbound': 'unbound', 'bsl-shaders': 'bsl',
+                     'bliss-shader': 'bliss', 'photon-shader': 'photon', 'solas-shader': 'solas', 'makeup-ultra-fast-shaders': 'makeup']
+        String chosen = null
+        var wanted = packs.files.collect { f -> var key = names.keySet().find { f.name.startsWith(it) }; key != null ? names[key] + '.zip' : f.name }
+        dir.listFiles().findAll { it.name.endsWith('.zip') && !wanted.contains(it.name) }.each { it.delete() }   // packs named otherwise before
+        packs.files.each { f ->
+            var key = names.keySet().find { f.name.startsWith(it) }
+            var name = key != null ? names[key] + '.zip' : f.name
+            java.nio.file.Files.copy(f.toPath(), new File(dir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            if (key != null && names[key] == pick.toLowerCase()) {
+                chosen = name
+            }
+        }
+        var config = new File(runDir, 'config/iris.properties')
+        config.parentFile.mkdirs()
+        var props = new Properties()
+        if (config.exists()) {
+            config.withInputStream { props.load(it) }
+        }
+        props.setProperty('enableShaders', (pick != 'off' && chosen != null).toString())
+        if (chosen != null) {
+            props.setProperty('shaderPack', chosen)
+        }
+        config.withOutputStream { props.store(it, 'Set by gradle installShaderPacks') }
+        // Iris's own metadata warns as it loads, and NeoForge's warning screen would hold the photographers before
+        // the title screen: the dev runs with Iris skip it.
+        var neo = new File(runDir, 'config/neoforge-client.toml')
+        if (neo.exists()) {
+            neo.text = neo.text.replaceAll(/(?m)^showLoadWarnings\s*=\s*true/, 'showLoadWarnings = false')
+        } else {
+            neo.text = 'showLoadWarnings = false\n'
+        }
+        logger.lifecycle("Shader packs in ${dir}; Iris set to ${pick == 'off' ? 'no pack' : chosen}")
+    }
+}
+// Sodium for 1.21.1 comes as a wrapper: a library of its early start-up classes with the mod itself and its Fabric API
+// parts packed inside. On the dev runs' classpath the launcher took the wrapper for the mod and loaded none of Sodium
+// (Iris then failed for want of its classes); from a mods folder it loads as it does for players. So the dev runs with
+// Iris put it in run/mods, and the others take it out again (as Ground Burst's 1.21.1 build does).
+configurations {
+    sodiumWrapper {
+        canBeConsumed = false
+        transitive = false
+    }
+}
+dependencies {
+    sodiumWrapper "maven.modrinth:sodium:${sodiumVersion}"
+}
+var sodiumToMods = tasks.register('sodiumToMods', Sync) {
+    from(configurations.sodiumWrapper)
+    into file('run/mods')
+    preserve { include '**/*' }
+    rename { 'sodium-dev-iris.jar' }
+}
+var sodiumFromMods = tasks.register('sodiumFromMods', Delete) {
+    delete file('run/mods/sodium-dev-iris.jar')
+}
+if (providers.gradleProperty('withIris').isPresent()) {
+    tasks.matching { it.name.startsWith('run') && it.name != 'runData' }.configureEach { it.dependsOn installShaderPacks, sodiumToMods }
+} else {
+    tasks.matching { it.name.startsWith('run') }.configureEach { it.dependsOn sodiumFromMods }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

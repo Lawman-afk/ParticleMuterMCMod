@@ -158,6 +158,9 @@ FILE_FIXES = {
         swap('"gamerule spawn_mobs false"', '"gamerule doMobSpawning false"'),
         swap("BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(tab)",
              "BuiltInRegistries.CREATIVE_MODE_TAB.getOrThrow(tab)"),
+        # The test pack's version: one number on 1.21.1 and 1.20.1 (26.x gives a range of major versions).
+        swap("net.minecraft.SharedConstants.RESOURCE_PACK_FORMAT_MAJOR;", "net.minecraft.SharedConstants.RESOURCE_PACK_FORMAT;"),
+        resub(r'\\"min_format\\": "\s*\+ format \+ ", \\"max_format\\": " \+ format \+ "\}\}"', r'\\"pack_format\\": " + format + "}}"'),
     ],
 }
 
