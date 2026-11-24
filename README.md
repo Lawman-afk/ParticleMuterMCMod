@@ -1,5 +1,7 @@
 # Particle Muter
 
+![Particle Muter](docs/branding/banner.jpg)
+
 Turn off any particle, from Minecraft or any mod, from a button in your inventory.
 
 Open your inventory and click the small button at the top right of the player's box. Every particle in the game is
@@ -21,6 +23,8 @@ and the Config button in the mod list.
 
 Particle Muter is client-side only: it changes nothing on servers, and works on any server. Your choices are kept in
 `config/particlemuter.json`.
+
+![Cherry petals on, and muted](docs/screenshots/compare_petals.jpg)
 
 ## Works with
 

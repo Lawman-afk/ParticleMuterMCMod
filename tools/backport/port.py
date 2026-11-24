@@ -29,6 +29,8 @@ MANUAL = {line.strip() for line in (HERE / "manual.txt").read_text(encoding="utf
 
 DROP = [re.compile(p) for p in (
     r"docs/BACKPORT\.md", r"tools/backport/.*",
+    # The mod page's photographer: main only (the page's pictures come from 26.3).
+    r"src/main/java/dev/particlemuter/devworld/Showcase\.java",
     # 26.x's particle resources (1.21.1 keeps the sprite sets in the engine: ParticleEngineAccessor, manual here) and its
     # level's block-particle methods (1.21.1's are the engine's: ParticleEngineBlockMixin, this branch's own).
     r"src/main/java/dev/particlemuter/mixin/ParticleResourcesAccessor\.java",
