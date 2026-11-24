@@ -51,6 +51,7 @@ def sub(pattern: str, repl, flags: int = 0):
 
 
 RULES = [
+    sub(r"\.hasInfiniteMaterials\(\)", ".getAbilities().instabuild"),
     sub(r"\bNeoForge\.EVENT_BUS\b", "MinecraftForge.EVENT_BUS"),
     sub(r"\bnet\.neoforged\.fml\.loading\.FMLPaths\b", "net.minecraftforge.fml.loading.FMLPaths"),
     sub(r"\bnet\.neoforged\.fml\.ModList\b", "net.minecraftforge.fml.ModList"),
