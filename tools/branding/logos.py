@@ -278,6 +278,110 @@ def eye() -> Image.Image:
     return slashed(layer, p, q)
 
 
+# ---- the second round: "lens, two" (the user: "definitely the best of the bunch, however something just doesn't look
+# right about the stop sign"), its "no" sign changed round ------------------------------------------------------------
+
+TWO = ((-0.035, 0.03, 0.15), (0.118, -0.122, 0.06))      # the two sparks: from the sign's middle, and their sizes
+RED = (238, 86, 92)                                       # the in-game button's red slash, as a clean coral red
+
+
+def drop_crumbs(layer: Image.Image, min_area: float = 0.0012) -> Image.Image:
+    """Clears the crumbs a cut leaves (the tip of a spark's point left alone past a bar's gap, which reads as a stray
+    speck): every separate piece smaller than `min_area` of the logo's area."""
+    from scipy import ndimage
+    alpha = np.asarray(layer.getchannel("A"))
+    pieces, count = ndimage.label(alpha > 24)
+    if count < 2:
+        return layer
+    sizes = ndimage.sum_labels(np.ones_like(alpha), pieces, index=np.arange(1, count + 1))
+    small = np.zeros(count + 1, bool)
+    small[1:] = sizes < min_area * M * M
+    keep_mask = ~small[pieces]
+    layer.putalpha(Image.fromarray(np.uint8(alpha * keep_mask), "L"))
+    return layer
+
+
+def paint(spec, mask: Image.Image, c, r) -> Image.Image:
+    """A colour, or "glow": the mod's scale across the sign from its bottom left (pale) to its top right (violet)."""
+    return glow_fill(mask, "diagonal", c[0], c[1], r, 0.0, 1.0) if spec == "glow" else solid(spec, mask)
+
+
+def sign(sparks=TWO, ring_t: float = T, bar_w: float = BAR, bar: str = "inside", direction: str = "\\", gap: bool = False,
+         ring_paint=WHITE, bar_paint=WHITE, spark_paint="glow", c=C, r: float = R) -> Image.Image:
+    """The lens and its sparks under a "no" sign of which every part can change:
+    - ring_t, bar_w: the ring's and the bar's widths;
+    - bar: "inside" (its ends under the ring, as the sign is drawn), "floating" (round ends short of the ring), "out"
+      (the "off" icons' slash, through the ring and out past it, the ring cut round it), "cut" (no bar to see: only the
+      gap it would leave in the sparks), or "none";
+    - direction: "\\" (top left to bottom right, as the sign is drawn) or "/" (along the tape; the sparks mirrored);
+    - gap: whether the bar cuts a gap round itself in the sparks;
+    - ring_paint, bar_paint, spark_paint: a colour, "glow" (the mod's scale) or, for the sparks, "white";
+    - c, r: the sign's middle and size (the sparks scaled with its lens)."""
+    inner = r - ring_t
+    scale = inner / (R - T)
+    flip = -1 if direction == "/" else 1
+    k = math.sqrt(0.5)
+
+    def along(d0: float, d1: float):
+        """Points d0 before and d1 after the middle along the bar's diagonal."""
+        return (c[0] - flip * d0 * k, c[1] - d0 * k), (c[0] + flip * d1 * k, c[1] + d1 * k)
+
+    inside = disc_mask(*c, inner + 0.002)
+    layer = clear()
+    layer.alpha_composite(solid(LENS, inside))
+    content = clear()
+    for dx, dy, sr in sparks:
+        sx, sy, sr = c[0] + flip * dx * scale, c[1] + dy * scale, sr * scale
+        if spark_paint == "white":
+            content.alpha_composite(solid(WHITE, spark_mask(sx, sy, sr)))
+        else:
+            content.alpha_composite(lit_spark(sx, sy, sr))
+    ring = ImageChops.subtract(disc_mask(*c, r), disc_mask(*c, inner))
+    if bar == "inside":
+        a, b = along(inner + 0.02, inner + 0.02)
+    elif bar == "floating":
+        a, b = along(inner - 0.05, inner - 0.05)
+    elif bar == "out":
+        a, b = along(r + 0.05, r + 0.04)
+    else:
+        a, b = along(inner, inner)
+    if gap or bar in ("out", "cut"):
+        drop_crumbs(cut(content, line_mask(a, b, bar_w + 2 * GAP)))
+    layer.alpha_composite(content)
+    if bar == "out":
+        cut_ring = Image.fromarray(np.uint8(np.asarray(ring) * (np.asarray(line_mask(a, b, bar_w + 2 * GAP)) < 128)), "L")
+        layer.alpha_composite(paint(ring_paint, cut_ring, c, r))
+        layer.alpha_composite(paint(bar_paint, line_mask(a, b, bar_w), c, r))
+        return layer
+    if bar in ("inside", "floating"):
+        bar_mask = line_mask(a, b, bar_w)
+        if bar == "inside":
+            bar_mask = ImageChops.multiply(bar_mask, inside)
+        layer.alpha_composite(paint(bar_paint, bar_mask, c, r))
+    layer.alpha_composite(paint(ring_paint, ring, c, r))
+    return layer
+
+
+MORE = {
+    "lens, two (first)": lambda: lens("two"),
+    "thin": lambda: sign(ring_t=0.046, bar_w=0.042, sparks=((-0.04, 0.035, 0.165), (0.125, -0.13, 0.066))),
+    "centred": lambda: sign(sparks=((0.0, 0.0, 0.16), (0.12, -0.12, 0.055))),
+    "apart": lambda: sign(sparks=((-0.095, 0.095, 0.095), (0.1, -0.1, 0.055))),
+    "gap": lambda: sign(gap=True),
+    "floating bar": lambda: sign(bar="floating"),
+    "slash out": lambda: sign(bar="out", c=(0.455, 0.44), r=0.29),
+    "mirrored": lambda: sign(direction="/"),
+    "glow sign": lambda: sign(ring_paint="glow", bar_paint="glow", spark_paint="white"),
+    "red bar": lambda: sign(bar_paint=RED),
+    "thin, centred": lambda: sign(ring_t=0.046, bar_w=0.042, sparks=((0.0, 0.0, 0.17), (0.128, -0.128, 0.058))),
+    "no bar": lambda: sign(bar="none"),
+}
+
+
+def more_examples() -> dict:
+    return {name: compose(make()) for name, make in MORE.items()}
+
+
 SYMBOLS = {
     "lens": lambda: lens("glow"),
     "lens, line": lambda: lens("line"),
@@ -320,23 +424,25 @@ def sheet(logos: dict, path: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(S.ROOT / "build" / "branding" / "logos"))
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--set", default="first", choices=("first", "more"))
     ap.add_argument("--choose", default=None)
     args = ap.parse_args()
-    out = Path(args.out)
+    out = Path(args.out or S.ROOT / "build" / "branding" / ("logos" if args.set == "first" else "logos_more"))
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob("logo_*.png"):
-        old.unlink()                                        # (examples from an earlier round)
-    logos = examples()
+        old.unlink()                                        # (examples from an earlier run)
+    logos = examples() if args.set == "first" else more_examples()
+    symbols = SYMBOLS if args.set == "first" else MORE
     for name, logo in logos.items():
-        file = name.replace(", ", "_").replace(" ", "_")
+        file = name.replace(", ", "_").replace(" ", "_").replace("(", "").replace(")", "")
         logo.save(out / f"logo_{file}_1024.png", optimize=True)
         logo.resize((400, 400), Image.LANCZOS).save(out / f"logo_{file}.png", optimize=True)
-    sheet(logos, out.parent / "logos_sheet.png")
+    sheet(logos, out.parent / f"{out.name}_sheet.png")
     if args.choose:
         LOGO.parent.mkdir(parents=True, exist_ok=True)
         logos[args.choose].resize((400, 400), Image.LANCZOS).convert("RGB").save(LOGO, optimize=True)
-        sym = SYMBOLS[args.choose]().resize((N, N), Image.LANCZOS)
+        sym = symbols[args.choose]().resize((N, N), Image.LANCZOS)
         cut_out = sym.crop(sym.getbbox())
         side = max(cut_out.size) + 48
         icon = Image.new("RGBA", (side, side), (0, 0, 0, 0))
