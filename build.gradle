@@ -72,6 +72,8 @@ legacyForge {
             client()
             programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
             systemProperty 'particlemuter.lab', 'true'
+            // -PwithPack: the Lab makes and turns on a resource pack of its own that redraws some particles.
+            systemProperty 'particlemuter.pack', providers.gradleProperty('withPack').isPresent().toString()
         }
 
         configureEach {
@@ -152,10 +154,90 @@ dependencies {
     // Main's nullness annotations (26.x ships them; 1.20.1 does not): only to compile, as annotations go unread.
     compileOnly 'org.jspecify:jspecify:1.0.0'
 
+    // Shader packs (optional at runtime): -PwithIris runs Oculus and Embeddium in the dev client;
+    // -PwithSodiumExtra adds Rubidium Extra (its own particle switches); -PwithDH Distant Horizons.
+    if (providers.gradleProperty('withIris').isPresent()) {
+        modRuntimeOnly "maven.modrinth:oculus:${oculus_version}"
+        modRuntimeOnly "maven.modrinth:embeddium:${embeddium_version}"
+    }
+    if (providers.gradleProperty('withSodiumExtra').isPresent()) {
+        modRuntimeOnly "maven.modrinth:rubidium-extra:${sodium_extra_version}"
+    }
+    if (providers.gradleProperty('withDH').isPresent()) {
+        modRuntimeOnly "maven.modrinth:distanthorizons:${dh_version}"
+    }
     // Extreme Sound Muffler (optional at runtime): -PwithESM runs it in the dev client, to check the button beside its.
     if (providers.gradleProperty('withESM').isPresent()) {
         modRuntimeOnly "maven.modrinth:extreme_sound_muffler:${esm_version}"
     }
+}
+
+// The shader packs the dev runs test with (-PwithIris; -PirisPack=complementary|unbound|bsl|bliss|photon|solas|makeup|off
+// picks one, Complementary by default): put in run/shaderpacks, and Oculus's config pointed at the one picked.
+configurations {
+    shaderPacks {
+        canBeConsumed = false
+        transitive = false
+    }
+}
+dependencies {
+    shaderPacks "maven.modrinth:complementary-reimagined:${complementary_version}@zip"
+    shaderPacks "maven.modrinth:bsl-shaders:${bsl_version}@zip"
+    shaderPacks "maven.modrinth:bliss-shader:${bliss_version}@zip"
+    shaderPacks "maven.modrinth:photon-shader:${photon_version}@zip"
+    shaderPacks "maven.modrinth:solas-shader:${solas_version}@zip"
+    shaderPacks "maven.modrinth:makeup-ultra-fast-shaders:${makeup_version}@zip"
+    shaderPacks "maven.modrinth:complementary-unbound:${unbound_version}@zip"
+}
+var installShaderPacks = tasks.register('installShaderPacks') {
+    group = 'development'
+    description = 'Puts the test shader packs in run/shaderpacks and sets Oculus to the one -PirisPack names.'
+    var packs = configurations.shaderPacks
+    var pick = (project.findProperty('irisPack') ?: 'complementary').toString()
+    var runDir = file('run')
+    inputs.files(packs)
+    outputs.upToDateWhen { false }
+    doLast {
+        var dir = new File(runDir, 'shaderpacks')
+        dir.mkdirs()
+        var names = ['complementary-reimagined': 'complementary', 'complementary-unbound': 'unbound', 'bsl-shaders': 'bsl',
+                     'bliss-shader': 'bliss', 'photon-shader': 'photon', 'solas-shader': 'solas', 'makeup-ultra-fast-shaders': 'makeup']
+        String chosen = null
+        var wanted = packs.files.collect { f -> var key = names.keySet().find { f.name.startsWith(it) }; key != null ? names[key] + '.zip' : f.name }
+        dir.listFiles().findAll { it.name.endsWith('.zip') && !wanted.contains(it.name) }.each { it.delete() }
+        packs.files.each { f ->
+            var key = names.keySet().find { f.name.startsWith(it) }
+            var name = key != null ? names[key] + '.zip' : f.name
+            java.nio.file.Files.copy(f.toPath(), new File(dir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            if (key != null && names[key] == pick.toLowerCase()) {
+                chosen = name
+            }
+        }
+        ['oculus.properties', 'iris.properties'].each { fileName ->
+            var config = new File(runDir, "config/${fileName}")
+            config.parentFile.mkdirs()
+            var props = new Properties()
+            if (config.exists()) {
+                config.withInputStream { props.load(it) }
+            }
+            props.setProperty('enableShaders', (pick != 'off' && chosen != null).toString())
+            if (chosen != null) {
+                props.setProperty('shaderPack', chosen)
+            }
+            config.withOutputStream { props.store(it, 'Set by gradle installShaderPacks') }
+        }
+        var forge = new File(runDir, 'config/forge-client.toml')
+        if (forge.exists()) {
+            forge.text = forge.text.replaceAll(/(?m)^(\s*)showLoadWarnings\s*=\s*true/, '$1showLoadWarnings = false')
+        } else {
+            forge.parentFile.mkdirs()
+            forge.text = '[client]\n\tshowLoadWarnings = false\n'
+        }
+        logger.lifecycle("Shader packs in ${dir}; Oculus set to ${pick == 'off' ? 'no pack' : chosen}")
+    }
+}
+if (providers.gradleProperty('withIris').isPresent()) {
+    tasks.matching { it.name.startsWith('run') && !(it.name in ['runGameTestServer', 'runServer', 'runData']) }.configureEach { it.dependsOn installShaderPacks }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

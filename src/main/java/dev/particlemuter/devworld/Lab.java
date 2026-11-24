@@ -70,6 +70,10 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 @EventBusSubscriber(value = Dist.CLIENT, modid = ParticleMuter.MODID)
 public final class Lab {
     private static final boolean ENABLED = Boolean.getBoolean("particlemuter.lab");
+    /** Whether the Lab runs with its own test resource pack on (-PwithPack): see makePack. */
+    private static final boolean PACK = Boolean.getBoolean("particlemuter.pack");
+    private static final String PACK_ID = "file/particlemuter_test";
+    private static java.util.concurrent.CompletableFuture<Void> packReload;
     /** Ticks for the world to come in and the particles to get going, and between pictures. */
     private static final int SETTLE = 200, EACH = 40;
 
@@ -107,6 +111,13 @@ public final class Lab {
             mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
         }
         if (mc.level == null && !worldMade && mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen) {
+            if (PACK && packReload == null) {
+                packReload = makePack(mc);                         // (the world is made once the game has loaded it)
+                return;
+            }
+            if (packReload != null && !packReload.isDone()) {
+                return;
+            }
             worldMade = true;
             // As a player who has never used the mod: nothing muted, the button in its default place.
             Settings.unmuteAll();
@@ -193,6 +204,9 @@ public final class Lab {
     /** The checks' results in the log, and the settings put back (nothing muted). */
     private static void finish(Minecraft mc) {
         gameMode(mc, GameType.CREATIVE);
+        if (PACK) {
+            mc.getResourcePackRepository().removePack(PACK_ID);     // (later runs start without it)
+        }
         Settings.unmuteAll();
         Settings.save();
         Muting.apply();
@@ -378,6 +392,13 @@ public final class Lab {
         list.add(new View("campfires", fires, 0f, -6f, mc -> {
             mc.setScreen(null);
             checkCatalog();
+            if (PACK) {
+                // The list's pictures are the particles' own sprites, so a pack that redraws a particle redraws its
+                // picture: the pack's flame is 32 pixels where vanilla's is 8.
+                var flame = dev.particlemuter.client.Icons.sprite("minecraft:flame");
+                int size = flame == null ? 0 : flame.contents().width();
+                check(size == 32, "the list's picture of the flame is the resource pack's (" + size + " px wide)");
+            }
         }));
         // The creative inventory opened as a player opens it (the inventory key: the game sets up the survival screen,
         // which hands over to the creative one), on another tab first, then its own tab, then another again: the
@@ -494,6 +515,53 @@ public final class Lab {
             }
         }
         return false;
+    }
+
+    /**
+     * A resource pack of the Lab's own, as players' texture packs are: it redraws the flame (magenta) and the campfires'
+     * smoke (green) at four times vanilla's size, as a 32x pack does, from the game's own textures (so nothing is
+     * downloaded); written into the game's resourcepacks folder, turned on, and the game's resources reloaded.
+     */
+    private static java.util.concurrent.CompletableFuture<Void> makePack(Minecraft mc) {
+        Path dir = mc.getResourcePackDirectory().resolve("particlemuter_test");
+        try {
+            Path textures = dir.resolve("assets/minecraft/textures/particle");
+            Files.createDirectories(textures);
+            int format = net.minecraft.SharedConstants.RESOURCE_PACK_FORMAT;
+            Files.writeString(dir.resolve("pack.mcmeta"), "{\"pack\": {\"description\": \"Particle Muter's test pack\", \"pack_format\": " + format + "}}");
+            redraw(mc, "flame", textures, 0xFF40FF);
+            for (int i = 0; i < 12; i++) {
+                redraw(mc, "big_smoke_" + i, textures, 0x50FF70);
+            }
+        } catch (IOException | RuntimeException e) {
+            ParticleMuter.LOGGER.error("Lab: could not make the test pack", e);
+        }
+        var packs = mc.getResourcePackRepository();
+        packs.reload();
+        boolean on = packs.addPack(PACK_ID);
+        ParticleMuter.LOGGER.info("Lab: test resource pack {}", on ? "on" : "NOT FOUND");
+        return mc.reloadResourcePacks();
+    }
+
+    /** One particle texture redrawn: four times the size, its shades in the given colour. */
+    private static void redraw(Minecraft mc, String name, Path into, int rgb) throws IOException {
+        var resource = mc.getResourceManager().getResource(new net.minecraft.resources.ResourceLocation("textures/particle/" + name + ".png")).orElseThrow();
+        java.awt.image.BufferedImage source;
+        try (var in = resource.open()) {
+            source = javax.imageio.ImageIO.read(in);
+        }
+        int scale = 4;
+        var out = new java.awt.image.BufferedImage(source.getWidth() * scale, source.getHeight() * scale, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < out.getHeight(); y++) {
+            for (int x = 0; x < out.getWidth(); x++) {
+                int argb = source.getRGB(x / scale, y / scale);
+                int alpha = argb >>> 24;
+                float shade = ((argb >> 16 & 255) + (argb >> 8 & 255) + (argb & 255)) / 765f;
+                int r = Math.round((rgb >> 16 & 255) * shade), g = Math.round((rgb >> 8 & 255) * shade), b = Math.round((rgb & 255) * shade);
+                out.setRGB(x, y, alpha << 24 | r << 16 | g << 8 | b);
+            }
+        }
+        javax.imageio.ImageIO.write(out, "png", into.resolve(name + ".png").toFile());
     }
 
     /** The player's game mode, set on the server (as the command does, without its line in the chat). */

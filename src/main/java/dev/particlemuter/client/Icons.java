@@ -82,7 +82,7 @@ public final class Icons {
     }
 
     /** The first sprite of that particle's sprite set, or null when it has none (or none loaded). */
-    private static TextureAtlasSprite sprite(String id) {
+    public static TextureAtlasSprite sprite(String id) {
         try {
             SpriteSet set = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$spriteSets().get(new ResourceLocation(id));
             if (set == null) {

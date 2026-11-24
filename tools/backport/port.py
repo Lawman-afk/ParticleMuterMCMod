@@ -52,6 +52,8 @@ def sub(pattern: str, repl, flags: int = 0):
 
 RULES = [
     sub(r"\.hasInfiniteMaterials\(\)", ".getAbilities().instabuild"),
+    # 1.20.1 makes a vanilla id with new.
+    sub(r"\b(net\.minecraft\.resources\.)?ResourceLocation\.withDefaultNamespace\(", r"new \1ResourceLocation("),
     # Forge's mod list.
     sub(r"\bnet\.neoforged\.neoforge\.client\.gui\.ModListScreen\b", "net.minecraftforge.client.gui.ModListScreen"),
     sub(r"\bNeoForge\.EVENT_BUS\b", "MinecraftForge.EVENT_BUS"),
