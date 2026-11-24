@@ -22,6 +22,15 @@ and the Config button in the mod list.
 Particle Muter is client-side only: it changes nothing on servers, and works on any server. Your choices are kept in
 `config/particlemuter.json`.
 
+## Works with
+
+- **Shader packs**: Iris with Sodium (NeoForge), Oculus with Embeddium (Forge 1.20.1). Muted particles stay gone with
+  a shader pack on, and the list draws over it as normal.
+- **Sodium Extra** and **Rubidium Extra**, which have particle switches of their own: both can be used at once.
+- **Distant Horizons**.
+- **Resource packs**: the list shows each particle as your pack draws it, high-resolution packs included.
+- **Extreme Sound Muffler**: the two buttons sit together in the inventory.
+
 ## Versions
 
 | Minecraft | Loader |
