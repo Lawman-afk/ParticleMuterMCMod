@@ -67,6 +67,16 @@ neoForge {
             systemProperty 'particlemuter.pack', providers.gradleProperty('withPack').isPresent().toString()
         }
 
+        // The mod page's pictures (devworld/Showcase, main only, left out of the jar): a default world, its nearest
+        // cherry grove and the Nether's basalt deltas, before and after muting, into run/screenshots/showcase_*.png.
+        // -Pseed=<n> picks another world; -PshotSize=1920x1080 for the page.
+        showcase {
+            client()
+            programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
+            systemProperty 'particlemuter.showcase', 'true'
+            systemProperty 'particlemuter.seed', (project.findProperty('seed') ?: '20261125').toString()
+        }
+
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
             if (providers.gradleProperty('withIris').isPresent()) {
@@ -117,7 +127,7 @@ dependencies {
 // particlemuter.keepMouse; the runs move the camera themselves), NeoForge's early loading window turned off for them in
 // run/config/fml.toml; every client run is muted (master volume 0 in run/options.txt; -Psound=on keeps the sound) and
 // skips the first-launch accessibility screen.
-def testRunNames = ['runLab']
+def testRunNames = ['runLab', 'runShowcase']
 def fmlConfig = file('run/config/fml.toml')
 def clientOptions = file('run/options.txt')
 def withSound = providers.gradleProperty('sound').isPresent()

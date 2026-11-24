@@ -1,3 +1,5 @@
+![Particle Muter: cherry petals falling in a cherry grove of a normally generated world](https://raw.githubusercontent.com/Lawman-afk/ParticleMuterMCMod/main/docs/branding/banner.jpg)
+
 **Turn off any particle, from Minecraft or any mod, from a button in your inventory.**
 
 Open your inventory and click the small button at the top right of the player's box. Every particle in the game is
@@ -6,7 +8,11 @@ being drawn at once, and stays off until you turn it back on.
 
 **NeoForge** for Minecraft **26.3**, **26.1.2** and **1.21.1** · **Forge** for **1.20.1** · client-side only
 
+![A cherry grove split down the middle: petals falling on the left, the same moment with cherry petals muted on the right](https://raw.githubusercontent.com/Lawman-afk/ParticleMuterMCMod/main/docs/screenshots/compare_petals.jpg)
+
 ## The lists
+
+![The Recent list in the basalt deltas: basalt delta ash at the top, about 1,500 a second](https://raw.githubusercontent.com/Lawman-afk/ParticleMuterMCMod/main/docs/screenshots/list_recent_ash.jpg)
 
 - **Recent:** the particles made around you lately, the busiest first. Whatever is filling your screen is at the top.
 - **All:** every particle, Minecraft's and each mod's, under its mod's name. A mod's heading mutes all of its particles
@@ -17,6 +23,12 @@ being drawn at once, and stays off until you turn it back on.
 Search by name, id or mod. **On / Off** shows every particle again for a while without losing your list, and
 **Unmute all** clears it (click twice).
 
+## The Nether's ash, gone
+
+![Basalt deltas split down the middle: white ash in the air on the left, muted on the right](https://raw.githubusercontent.com/Lawman-afk/ParticleMuterMCMod/main/docs/screenshots/compare_ash.jpg)
+
+One click on **Basalt delta ash** clears the air of the Nether's busiest biome; the same for the soul sand valley's ash, the crimson and warped forests' spores, and any mod's particles.
+
 ## Not just particle types
 
 Three more rows cover particles that have no type of their own:
@@ -26,6 +38,8 @@ Three more rows cover particles that have no type of their own:
 - **Item pickup:** items and orbs flying to whoever picks them up.
 
 ## The button
+
+![The survival inventory with the Particle Muter button at the top right of the player's box](https://raw.githubusercontent.com/Lawman-afk/ParticleMuterMCMod/main/docs/screenshots/inventory_button.jpg)
 
 The button sits where Extreme Sound Muffler puts its own, or just below it when that mod is installed too. In creative
 it shows on the inventory tab. It moves with the recipe book, and you can drag it somewhere else with the right mouse
