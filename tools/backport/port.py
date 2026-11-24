@@ -154,8 +154,8 @@ FILE_FIXES = {
         resub(r"\.teleportTo\(([^;]*?), Set\.of\(\), ([^,;]+), ([^,;]+), true\)", r".teleportTo(\1, \2, \3)"),
         swap('"gamerule advance_time false", "gamerule advance_weather false"', '"gamerule doDaylightCycle false", "gamerule doWeatherCycle false"'),
         swap('"gamerule spawn_mobs false"', '"gamerule doMobSpawning false"'),
-        swap("BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(CreativeModeTabs.INVENTORY)",
-             "BuiltInRegistries.CREATIVE_MODE_TAB.getOrThrow(CreativeModeTabs.INVENTORY)"),
+        swap("BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(tab)",
+             "BuiltInRegistries.CREATIVE_MODE_TAB.getOrThrow(tab)"),
     ],
 }
 
