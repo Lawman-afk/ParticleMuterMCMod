@@ -159,6 +159,17 @@ FILE_FIXES = {
     ],
 }
 
+
+
+def port_resource(path: str, data: bytes):
+    """NeoForge 21.1's mod file names its loader (26.x's no longer does)."""
+    if path.endswith("META-INF/neoforge.mods.toml"):
+        text = data.decode("utf-8")
+        if "modLoader" not in text:
+            text = 'modLoader="javafml"\nloaderVersion="[4,)"\n' + text
+        return path, text.encode("utf-8")
+    return path, data
+
 # ======================================================================================================================
 # The engine (the same in every branch).
 # ======================================================================================================================
