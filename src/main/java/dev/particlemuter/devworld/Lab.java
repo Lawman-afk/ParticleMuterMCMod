@@ -360,11 +360,11 @@ public final class Lab {
         }));
         list.add(new View("inventory", front, 0f, 20f, mc -> {
             particlesBefore = particles(mc);                       // (two seconds by the campfires, as the later count)
-            run(mc, "gamemode survival @a");
+            gameMode(mc, GameType.SURVIVAL);
             mc.setScreen(new InventoryScreen(mc.player));
         }));
         list.add(new View("inventory_creative", front, 0f, 20f, mc -> {
-            run(mc, "gamemode creative @a");
+            gameMode(mc, GameType.CREATIVE);
             var screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), false);
             mc.setScreen(screen);
             pendingTab = screen;                                   // (its tab picked once it is set up, next tick)
@@ -406,9 +406,10 @@ public final class Lab {
         ParticleMuter.LOGGER.info("Lab: particle sources set out at y {}", y);
     }
 
-    private static void run(Minecraft mc, String command) {
+    /** The player's game mode, set on the server (as the command does, without its line in the chat). */
+    private static void gameMode(Minecraft mc, GameType mode) {
         MinecraftServer server = mc.getSingleplayerServer();
-        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command));
+        server.execute(() -> server.getPlayerList().getPlayers().getFirst().setGameMode(mode));
     }
 
     /** The list, from the inventory as its button opens it, showing that list and search. */
