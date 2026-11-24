@@ -1,15 +1,19 @@
 # Particle Muter — Progress
 
-**Last updated: 2026-11-23.** 26.3 main written and compiling: the mute hook, block and pickup rows, settings, counts,
-the inventory button (beside Extreme Sound Muffler's), the screen, the key, the test world (Lab). Not yet seen running.
+**Last updated: 2026-11-24.** Built on all four versions, each passing its test world's six checks, with and without
+Extreme Sound Muffler. The jars and the test world "Particle Lab" are in the user's four instances. Waiting for the
+user's own test and their pick of a logo.
 
 | Step | Status |
 |---|---|
 | Name, instances, project set up | done |
-| Mute hook, settings, tracker | done (compiles) |
-| Inventory button and screen | done (compiles) |
-| Lab run on 26.3 (checks, pictures) | next: the first run stopped at NeoForge's load-warning screen (logoFile, now removed) |
-| Logo | to do: examples sheet for the user to pick (logo-style rule), then iconFile |
-| 26.1.2 port | worktree and port.py made; DevRuns taken from Culprit 26.1.2; compile again |
-| 1.21.1, 1.20.1 ports | to do (GUI stand-ins, ParticleEngine block hooks, accessor + invoker; MixinExtras bundled on 1.20.1) |
-| Deploy, README, page | README and changelog written; deploy after the checks |
+| Mute hook, settings, tracker | done |
+| Inventory button (beside ESM's) and screen | done |
+| Test world (Lab): 6 checks, pictures of the inventories and every list | done, 6 of 6 on 26.3, 26.1.2, 1.21.1, 1.20.1 |
+| 26.1.2 port (from main) | done |
+| 1.21.1 port (from main; GUI and input stand-ins; the engine's block hooks) | done |
+| 1.20.1 port (Forge, from 1.21.1; MixinExtras in the jar) | done; release jar checked in a real Forge client |
+| Deployed to the four instances, with the Lab world in each one's saves | done |
+| The user's test in their instances | waiting |
+| Logo | four examples in `docs/branding/examples/`, waiting for the user's pick (then iconFile/logo) |
+| Mod page, GitHub repository, upload | the user's call (never done for them) |
