@@ -295,6 +295,11 @@ public final class MuterScreen extends Screen {
     /** A mod's picture: its first particle with a sprite set of its own, else its first. */
     private static Catalog.Entry picture(List<Catalog.Entry> group) {
         for (Catalog.Entry e : group) {
+            if (e.id.equals("minecraft:flame")) {
+                return e;                                       // (Minecraft's: its flame, the best known)
+            }
+        }
+        for (Catalog.Entry e : group) {
             if (e.type != null) {
                 return e;
             }

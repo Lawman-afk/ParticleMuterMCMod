@@ -1,0 +1,112 @@
+"""Checks a release jar (reobfJar's: Forge's SRG names, as players have it) in a real Forge 1.20.1 client, outside the dev
+runs (docs/BACKPORT.md), as Ground Burst's 1.20.1 branch does: the Forge the CurseForge app installed (its version files,
+libraries and assets), a throwaway game folder holding the jar, the mods given and a world to open (the Lab's,
+run/saves/particle_lab), offline, muted, its window behind the others and the mouse left alone. The world is opened at
+once (quick play), so the server's hooks apply as well as the client's, and Mixin counts every hook's injections: a hook
+that finds no place in players' games (a name its refmap failed to give) is a warning in the log even where it is
+optional. The client is closed after the given seconds. Its log is the game folder's logs/latest.log.
+
+    python tools/backport/prod_client.py <game dir> <release jar> <world folder> <seconds> [<mod jar> ...]
+
+The game folder is made afresh each time. PROD_JAVA (a java.exe) runs it on another Java than Gradle's JDK 17.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+INSTALL = Path(os.path.expanduser("~")) / "curseforge" / "minecraft" / "Install"
+FORGE = os.environ.get("PROD_VERSION", "forge-47.4.28")
+LIBS = INSTALL / "libraries"
+
+
+def java17() -> Path:
+    if os.environ.get("PROD_JAVA"):
+        return Path(os.environ["PROD_JAVA"])
+    for d in sorted((Path(os.path.expanduser("~")) / ".gradle" / "jdks").glob("eclipse_adoptium-17-amd64-windows*")):
+        if (d / "bin" / "java.exe").exists():
+            return d / "bin" / "java.exe"
+    raise SystemExit("no JDK 17 in ~/.gradle/jdks (a Gradle build of this branch fetches one)")
+
+
+def allowed(rules) -> bool:
+    """A library's or an argument's rules, for Windows on x86-64 with no launcher features."""
+    if not rules:
+        return True
+    ok = False
+    for r in rules:
+        os_rule = r.get("os")
+        match = "features" not in r and (os_rule is None or (os_rule.get("name") in (None, "windows")
+                                                             and os_rule.get("arch") in (None, "x86_64", "amd64")))
+        if match:
+            ok = r["action"] == "allow"
+    return ok
+
+
+def lib_path(lib) -> Path:
+    art = lib.get("downloads", {}).get("artifact")
+    if art and art.get("path"):
+        return LIBS / art["path"]
+    group, name, version, *rest = lib["name"].split(":")
+    classifier = ("-" + rest[0]) if rest else ""
+    return LIBS / group.replace(".", "/") / name / version / f"{name}-{version}{classifier}.jar"
+
+
+def args_of(entries, subs) -> list[str]:
+    out = []
+    for e in entries:
+        if isinstance(e, str):
+            out.append(e)
+        elif allowed(e.get("rules")):
+            out.extend(e["value"] if isinstance(e["value"], list) else [e["value"]])
+    for k, v in subs.items():
+        out = [a.replace("${" + k + "}", v) for a in out]
+    return out
+
+
+def main():
+    game, jar, world, seconds = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), int(sys.argv[4])
+    mods = [Path(m) for m in sys.argv[5:]]
+    if game.exists():
+        shutil.rmtree(game)
+    (game / "mods").mkdir(parents=True)
+    (game / "config").mkdir()
+    for m in [jar, *mods]:
+        shutil.copy2(m, game / "mods" / m.name)
+    shutil.copytree(world, game / "saves" / world.name)
+    (game / "options.txt").write_text("soundCategory_master:0.0\nonboardAccessibility:false\npauseOnLostFocus:false\n", encoding="utf-8")
+    (game / "config" / "fml.toml").write_text("earlyWindowControl = false\n", encoding="utf-8")   # (made before any mod: it would take the focus)
+
+    forge = json.loads((INSTALL / "versions" / FORGE / f"{FORGE}.json").read_text(encoding="utf-8"))
+    vanilla = json.loads((INSTALL / "versions" / forge["inheritsFrom"] / f"{forge['inheritsFrom']}.json").read_text(encoding="utf-8"))
+    cp, seen = [], set()
+    for lib in forge["libraries"] + vanilla["libraries"]:      # Forge's first: its newer libraries win
+        key = lib["name"].rsplit(":", 1)[0] if lib["name"].count(":") == 2 else lib["name"]
+        if allowed(lib.get("rules")) and key not in seen and lib_path(lib).exists():
+            seen.add(key)
+            cp.append(str(lib_path(lib)))
+    subs = {
+        "natives_directory": str(game / "natives"), "launcher_name": "prod_client", "launcher_version": "1",
+        "classpath": os.pathsep.join(cp), "classpath_separator": os.pathsep, "library_directory": str(LIBS),
+        "version_name": FORGE, "auth_player_name": "Dev", "game_directory": str(game), "assets_root": str(INSTALL / "assets"),
+        "assets_index_name": vanilla["assetIndex"]["id"], "auth_uuid": "00000000000000000000000000000000",
+        "auth_access_token": "0", "clientid": "0", "auth_xuid": "0", "user_type": "legacy", "version_type": "release",
+    }
+    (game / "natives").mkdir()
+    jvm = ["-Xmx4G", "-Dparticlemuter.keepMouse=true", "-Dmixin.debug.countInjections=true"]
+    jvm += args_of(forge["arguments"]["jvm"], subs) + args_of(vanilla["arguments"]["jvm"], subs)
+    game_args = args_of(vanilla["arguments"]["game"], subs) + args_of(forge["arguments"]["game"], subs)
+    game_args += ["--width", "1280", "--height", "720", "--quickPlaySingleplayer", world.name]
+    with open(game / "launch.log", "w", encoding="utf-8") as out:
+        proc = subprocess.Popen([str(java17()), *jvm, forge["mainClass"], *game_args], cwd=game, stdout=out, stderr=subprocess.STDOUT)
+        try:
+            proc.wait(timeout=seconds)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+    print("exit", proc.returncode, "- log:", game / "logs" / "latest.log")
+
+
+main()
