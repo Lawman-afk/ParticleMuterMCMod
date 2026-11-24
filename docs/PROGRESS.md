@@ -16,5 +16,5 @@ user's own test and their pick of a logo.
 | Deployed to the four instances, with the Lab world in each one's saves | done |
 | The user's test in their instances | waiting |
 | Fixes after the user's test: creative tabs, Recent steady | done, 9 of 9 checks on every version, deployed |
-| Logo | later, its own round (the first examples were not liked) |
+| Logo | round one drawn as Culprit's were (`tools/branding/logos.py`): eight examples, waiting for the user's pick |
 | Mod page, GitHub repository, upload | the user's call (never done for them) |
