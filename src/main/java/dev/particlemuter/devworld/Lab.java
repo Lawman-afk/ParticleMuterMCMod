@@ -128,9 +128,9 @@ public final class Lab {
             server.execute(() -> build(server.overworld()));
             return;
         }
-        if (pendingTab != null && mc.screen == pendingTab && pendingTab.width > 0) {
-            selectInventoryTab(pendingTab);
-            ParticleMuter.LOGGER.info("Lab: creative inventory tab picked: {}", pendingTab.isInventoryOpen());
+        if (pendingTab != null && mc.screen instanceof CreativeModeInventoryScreen open && open.width > 0) {
+            selectInventoryTab(open);                              // (the screen open now: the game may have made its own)
+            ParticleMuter.LOGGER.info("Lab: creative inventory tab picked: {}", open.isInventoryOpen());
             pendingTab = null;
         }
         if (++waited < SETTLE) {
