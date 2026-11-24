@@ -19,5 +19,5 @@ user's own test and their pick of a logo.
 | Fixes after the user's test: creative tabs, Recent steady | done, 9 of 9 checks on every version, deployed |
 | Logo | chosen: "Halfway" (docs/branding/logo.png, icon.png); in every version's jar and mod list |
 | Mod page: pictures, banner, CURSEFORGE.md, release jars (build/release) | done |
-| GitHub repository ParticleMuterMCMod | waiting for the user's GitHub sign-in in the built-in browser; then create, push all four branches, About |
+| GitHub repository Lawman-afk/ParticleMuterMCMod | done: public, all four branches pushed, topics set, page images load |
 | CurseForge project and upload | the user's (summary sentence and description given) |
