@@ -1,6 +1,6 @@
 # Particle Muter — Progress
 
-**Last updated: 2026-11-24.** Built on all four versions, each passing its test world's six checks, with and without
+**Last updated: 2026-11-24 (later).** Built on all four versions, each passing its test world's six checks, with and without
 Extreme Sound Muffler. The jars and the test world "Particle Lab" are in the user's four instances. Waiting for the
 user's own test and their pick of a logo.
 
@@ -15,5 +15,6 @@ user's own test and their pick of a logo.
 | 1.20.1 port (Forge, from 1.21.1; MixinExtras in the jar) | done; release jar checked in a real Forge client |
 | Deployed to the four instances, with the Lab world in each one's saves | done |
 | The user's test in their instances | waiting |
-| Logo | four examples in `docs/branding/examples/`, waiting for the user's pick (then iconFile/logo) |
+| Fixes after the user's test: creative tabs, Recent steady | done, 9 of 9 checks on every version, deployed |
+| Logo | later, its own round (the first examples were not liked) |
 | Mod page, GitHub repository, upload | the user's call (never done for them) |
