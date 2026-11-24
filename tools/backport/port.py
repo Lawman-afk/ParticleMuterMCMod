@@ -52,6 +52,8 @@ RULES = [
     sub(r"(\b\w+)\.gameRenderer\.mainRenderTarget\(\)", r"\1.getMainRenderTarget()"),
     sub(r"\bInputConstants\.Type\.KEYBOARD\b", "InputConstants.Type.KEYSYM"),
     sub(r"\bWorldPresets([.:]{1,2})createTestWorldDimensions\b", r"WorldPresets\1createFlatWorldDimensions"),
+    # 26.1.2's mod list: in NeoForge's gui package, made with new.
+    sub(r"\bnet\.neoforged\.neoforge\.client\.gui\.modlist\.ModListScreen\.create\(", "new net.neoforged.neoforge.client.gui.ModListScreen("),
 ]
 
 
