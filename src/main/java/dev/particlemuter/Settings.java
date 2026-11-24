@@ -48,7 +48,7 @@ public final class Settings {
     private Settings() {}
 
     private static Path file() {
-        return net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get().resolve(ParticleMuter.MODID + ".json");
+        return net.minecraftforge.fml.loading.FMLPaths.CONFIGDIR.get().resolve(ParticleMuter.MODID + ".json");
     }
 
     /** Reads the file (a missing one gives the defaults; a broken one is kept as .bak and the defaults used). */

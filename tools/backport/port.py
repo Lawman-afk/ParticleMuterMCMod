@@ -1,4 +1,4 @@
-"""Turns main's sources (Minecraft 26.3) into this branch's (Minecraft 1.21.1): docs/BACKPORT.md.
+"""Turns the 1.21.1 branch's sources into this branch's (Minecraft 1.20.1, from the 1.21.1 branch): docs/BACKPORT.md.
 
 Reads every file of main at the commit in base.txt straight from git (so each run starts from main's own text) and writes
 its port here through RULES and FILE_FIXES. Main's files with no place here (DROP) are left out; files edited by hand
@@ -24,28 +24,25 @@ MANUAL = {line.strip() for line in (HERE / "manual.txt").read_text(encoding="utf
           if line.strip() and not line.startswith("#")} if (HERE / "manual.txt").exists() else set()
 
 # ======================================================================================================================
-# This branch: Minecraft 1.21.1, NeoForge 21.1.267.
+# This branch: Minecraft 1.20.1, Forge 47.4.28, made from the 1.21.1 branch (base.txt names its commit).
 # ======================================================================================================================
 
 DROP = [re.compile(p) for p in (
     r"docs/BACKPORT\.md", r"tools/backport/.*",
-    # 26.x's particle resources (1.21.1 keeps the sprite sets in the engine: ParticleEngineAccessor, manual here) and its
-    # level's block-particle methods (1.21.1's are the engine's: ParticleEngineBlockMixin, this branch's own).
-    r"src/main/java/dev/particlemuter/mixin/ParticleResourcesAccessor\.java",
-    r"src/main/java/dev/particlemuter/mixin/ClientLevelMixin\.java",
+    # NeoForge's mod file: Forge's is templates/META-INF/mods.toml, this branch's own.
+    r"src/main/templates/META-INF/neoforge\.mods\.toml",
 )]
-OWN = {"build.gradle", "gradle.properties"}
+OWN = {"build.gradle", "gradle.properties", "settings.gradle"}
 
 IMPORTS = {
-    "net.minecraft.world.level.block.entity.SignTextSlot": None,
-    "net.minecraft.world.entity.EntityTypes": "net.minecraft.world.entity.EntityType",
-    "net.minecraft.resources.Identifier": "net.minecraft.resources.ResourceLocation",
-    "net.minecraft.client.gui.GuiGraphicsExtractor": "dev.particlemuter.port.GuiGraphicsExtractor",
-    "net.minecraft.client.renderer.RenderPipelines": "dev.particlemuter.port.RenderPipelines",
-    "net.minecraft.client.input.MouseButtonEvent": "dev.particlemuter.port.input.MouseButtonEvent",
-    "net.minecraft.client.input.KeyEvent": "dev.particlemuter.port.input.KeyEvent",
-    "dev.particlemuter.mixin.ParticleResourcesAccessor": None,
-    "net.minecraft.util.FileUtil": "net.minecraft.FileUtil",
+    "net.neoforged.neoforge.common.NeoForge": "net.minecraftforge.common.MinecraftForge",
+    "net.neoforged.neoforge.client.event.ScreenEvent": "net.minecraftforge.client.event.ScreenEvent",
+    "net.neoforged.neoforge.client.event.ClientTickEvent": "net.minecraftforge.event.TickEvent",
+    "net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent": "net.minecraftforge.client.event.RegisterKeyMappingsEvent",
+    "net.neoforged.bus.api.IEventBus": "net.minecraftforge.eventbus.api.IEventBus",
+    "net.neoforged.bus.api.SubscribeEvent": "net.minecraftforge.eventbus.api.SubscribeEvent",
+    "net.neoforged.api.distmarker.Dist": "net.minecraftforge.api.distmarker.Dist",
+    "net.neoforged.fml.common.EventBusSubscriber": "net.minecraftforge.fml.common.Mod",
 }
 
 
@@ -54,108 +51,47 @@ def sub(pattern: str, repl, flags: int = 0):
 
 
 RULES = [
-    sub(r"\bIdentifier\b", "ResourceLocation"),
-    sub(r"\bEntityTypes\.", "EntityType."),
-    sub(r"\.gui\.screen\(\)", ".screen"),
-    sub(r"\.gui\.setScreen\(", ".setScreen("),
-    sub(r"\.gui\.hud\.isHidden\(\)", ".options.hideGui"),
-    sub(r"(\b\w+)\.gui\.hud\.toggle\(\)", r"\1.options.hideGui = !\1.options.hideGui"),
-    sub(r"(\b\w+)\.gameRenderer\.mainRenderTarget\(\)", r"\1.getMainRenderTarget()"),
-    sub(r"\bInputConstants\.Type\.KEYBOARD\b", "InputConstants.Type.KEYSYM"),
-    sub(r"\bKeyMapping\.Category\.MISC\b", '"key.categories.misc"'),
-    sub(r"\.getLeftPos\(\)", ".getGuiLeft()"),
-    sub(r"\.getTopPos\(\)", ".getGuiTop()"),
-    sub(r"\b(BuiltInRegistries\.\w+)\.getValue\(", r"\1.get("),
-    sub(r"\bWorldPresets([.:]{1,2})createTestWorldDimensions\b", r"WorldPresets\1createNormalWorldDimensions"),
-    sub(r"\.getPlayers\(\)\.getFirst\(\)", ".getPlayers().get(0)"),
+    sub(r"\bNeoForge\.EVENT_BUS\b", "MinecraftForge.EVENT_BUS"),
+    sub(r"\bnet\.neoforged\.fml\.loading\.FMLPaths\b", "net.minecraftforge.fml.loading.FMLPaths"),
+    sub(r"\bnet\.neoforged\.fml\.ModList\b", "net.minecraftforge.fml.ModList"),
+    sub(r"\b(net\.minecraft\.resources\.)?ResourceLocation\.fromNamespaceAndPath\(", r"new \1ResourceLocation("),
+    sub(r"\b(net\.minecraft\.resources\.)?ResourceLocation\.parse\(", r"new \1ResourceLocation("),
+    # 1.20.1's widgets draw through a public renderWidget.
+    sub(r"\bprotected void renderWidget\(", "public void renderWidget("),
+    # 1.20.1 scrolls on one axis.
+    sub(r"public boolean mouseScrolled\(double (\w+), double (\w+), double \w+, double (\w+)\)",
+        r"public boolean mouseScrolled(double \1, double \2, double \3)"),
 ]
 
 
 def swap(old: str, new: str):
     def fix(text: str) -> str:
-        assert old in text, f"port.py: '{old}' is gone from main: update FILE_FIXES"
+        assert old in text, f"port.py: '{old}' is gone from the 1.21.1 branch: update FILE_FIXES"
         return text.replace(old, new)
     return fix
 
 
-def resub(pattern: str, repl: str):
-    def fix(text: str) -> str:
-        new, n = re.subn(pattern, repl, text)
-        assert n, f"port.py: /{pattern}/ is gone from main: update FILE_FIXES"
-        return new
-    return fix
-
-
-# 26.x's input events from 1.21.1's numbers: each handler takes 1.21.1's arguments and makes main's event of them.
-MOUSE_CLICKED = swap("public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {",
-                     "public boolean mouseClicked(double mouseX_, double mouseY_, int button_) {\n"
-                     "        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);")
-
 FILE_FIXES = {
-    "src/main/java/dev/particlemuter/client/Icons.java": [
-        swap("""            var resources = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$resources();
-            SpriteSet set = ((ParticleResourcesAccessor) resources).particlemuter$spriteSets().get(Identifier.parse(id));""",
-             """            SpriteSet set = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$spriteSets().get(Identifier.parse(id));"""),
-        # 1.21.1's sprite sets have no first(): the first of one is index 0 of 1.
-        swap("set.first()", "set.get(0, 1)"),
+    # Forge's own method (not Minecraft's): no SRG name to map it to.
+    "src/main/java/dev/particlemuter/mixin/ParticleEngineBlockMixin.java": [
+        swap('@Inject(method = "addBlockHitEffects", at = @At("HEAD"), cancellable = true)',
+             '@Inject(method = "addBlockHitEffects", at = @At("HEAD"), cancellable = true, remap = false)'),
     ],
-    # 1.21.1 keeps the engine's clearing private: through the accessor's invoker.
-    "src/main/java/dev/particlemuter/Muting.java": [
-        swap("mc.particleEngine.clearParticles();", "((dev.particlemuter.mixin.ParticleEngineAccessor) mc.particleEngine).particlemuter$clear();"),
-    ],
-    "src/main/java/dev/particlemuter/client/InventoryButton.java": [
-        MOUSE_CLICKED,
-        swap("protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {",
-             "protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {\n"
-             "        GuiGraphicsExtractor g = new GuiGraphicsExtractor(graphics);"),
-    ],
+    # 1.20.1 draws a screen's background only when the screen asks: first, then the panel, the widgets, the tooltip.
     "src/main/java/dev/particlemuter/client/MuterScreen.java": [
-        MOUSE_CLICKED,
-        # 1.21.1 draws a screen's background inside its render: the panel goes in the background, the tooltip after all.
-        swap("""    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        drawPanel(g, mouseX, mouseY);
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
-        drawTooltip(g, mouseX, mouseY);
-    }""", """    public void renderBackground(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        swap("""    @Override
+    public void renderBackground(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.renderBackground(graphics, mouseX, mouseY, partialTick);
         drawPanel(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
     }
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        drawTooltip(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
-    }"""),
-        swap("Button.playButtonClickSound(Minecraft.getInstance().getSoundManager());", "Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));"),
-        swap("return super.mouseClicked(event, doubleClick);", "return super.mouseClicked(event.x(), event.y(), event.button());"),
-        swap("public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {",
-             "public boolean mouseDragged(double mouseX_, double mouseY_, int button_, double dx, double dy) {\n"
-             "        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);"),
-        swap("return super.mouseDragged(event, dx, dy);", "return super.mouseDragged(event.x(), event.y(), event.button(), dx, dy);"),
-        swap("public boolean mouseReleased(MouseButtonEvent event) {",
-             "public boolean mouseReleased(double mouseX_, double mouseY_, int button_) {\n"
-             "        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);"),
-        swap("return super.mouseReleased(event);", "return super.mouseReleased(event.x(), event.y(), event.button());"),
-        swap("public boolean keyPressed(KeyEvent event) {",
-             "public boolean keyPressed(int key_, int scancode_, int modifiers_) {\n"
-             "        KeyEvent event = new KeyEvent(key_, scancode_, modifiers_);"),
-        swap("keyInventory.matches(event)", "keyInventory.matches(event.key(), event.scancode())"),
-        swap("return super.keyPressed(event);", "return super.keyPressed(event.key(), event.scancode(), event.modifiers());"),
-    ],
-    "src/main/java/dev/particlemuter/devworld/Lab.java": [
-        swap("SignText.Mutable text = sign.getText(SignTextSlot.FRONT).asMutable();", "SignText text = sign.getText(true);"),
-        swap("text.setLine(i, Component.literal(lines[i]));", "text = text.setMessage(i, Component.literal(lines[i]));"),
-        swap("sign.setText(text.asImmutable(), SignTextSlot.FRONT);", "sign.setText(text, true);"),
-        swap("GameType.CREATIVE, LevelSettings.DifficultySettings.DEFAULT, true,\n                        WorldDataConfiguration.DEFAULT)",
-             "GameType.CREATIVE, false, net.minecraft.world.Difficulty.NORMAL, true,\n"
-             "                        new net.minecraft.world.level.GameRules(), WorldDataConfiguration.DEFAULT)"),
-        swap("private static WorldDimensions flat(HolderLookup.Provider registries)", "private static WorldDimensions flat(net.minecraft.core.RegistryAccess registries)"),
-        swap('".png", mc.gameRenderer.mainRenderTarget(), 1,', '".png", mc.gameRenderer.mainRenderTarget(),'),
-        resub(r"\.teleportTo\(([^;]*?), Set\.of\(\), ([^,;]+), ([^,;]+), true\)", r".teleportTo(\1, \2, \3)"),
-        swap('"gamerule advance_time false", "gamerule advance_weather false"', '"gamerule doDaylightCycle false", "gamerule doWeatherCycle false"'),
-        swap('"gamerule spawn_mobs false"', '"gamerule doMobSpawning false"'),
-        swap("BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(CreativeModeTabs.INVENTORY)",
-             "BuiltInRegistries.CREATIVE_MODE_TAB.getOrThrow(CreativeModeTabs.INVENTORY)"),
+        super.render(graphics, mouseX, mouseY, partialTick);""", """    @Override
+    public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics);
+        drawPanel(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
+        super.render(graphics, mouseX, mouseY, partialTick);"""),
     ],
 }
 

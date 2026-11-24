@@ -1,6 +1,8 @@
 plugins {
     id 'java-library'
-    id 'net.neoforged.moddev' version '2.0.148'
+    // Forge for 1.20.1 through ModDevGradle's plugin for the older Forge versions (official names in the sources, the jar
+    // turned back to Forge's SRG names for players: reobfJar), as Ground Burst's 1.20.1 branch.
+    id 'net.neoforged.moddev.legacyforge' version '2.0.148'
     id 'idea'
 }
 
@@ -11,9 +13,12 @@ tasks.named('wrapper', Wrapper).configure {
 version = mod_version
 group = mod_group_id
 
+sourceSets.main.resources {
+    exclude("**/.cache", "**/.cache/**")
+}
+
 repositories {
-    // Extreme Sound Muffler (-PwithESM), as released: compatibility runs only, never
-    // dependencies of the mod.
+    // Extreme Sound Muffler (-PwithESM): a compatibility run only, never a dependency of the mod.
     exclusiveContent {
         forRepository {
             maven {
@@ -28,38 +33,41 @@ repositories {
 }
 
 base {
+    // The Minecraft version in the name, so this jar is never taken for another version's.
     archivesName = "${mod_id}-mc${minecraft_version}"
 }
 
-// The licence travels in the jar (MIT asks for its notice in every copy); the dev aid (the prepared test world and
-// its photographer) is for the dev runs only, never in a released jar.
+// The licence travels in the jar (MIT asks for its notice in every copy).
 tasks.named('jar', Jar) {
     def licenceName = "LICENSE_${project.property('mod_id')}"
     from('LICENSE') {
         rename { licenceName }
     }
+    // The dev aid (the prepared test world and its photographer) is for the dev runs only, never in a released jar.
     exclude('dev/particlemuter/devworld/**')
+    // Forge 1.20.1 finds a mod's mixins through the jar's manifest.
+    manifest.attributes([
+            'MixinConfigs': "${mod_id}.legacy.mixins.json,${mod_id}.mixins.json"
+    ])
 }
 
-// Minecraft 1.21.1 runs on Java 21, so this branch targets Java 21.
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-Xmaxerrs', '10000'] }
+// Minecraft 1.20.1 runs on Java 17, so this branch targets Java 17.
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
-// The photographer's window, width x height: -PshotSize=1920x1080 for the mod page's gallery pictures.
+// The photographers' window, width x height: -PshotSize=1920x1080 for the mod page's gallery pictures.
 def shotSize = (project.findProperty('shotSize') ?: '1280x720').toString().split('x')
 
-neoForge {
-    version = project.neo_version
+legacyForge {
+    version = "${minecraft_version}-${forge_version}"
 
     runs {
         client {
             client()
         }
 
-        // Makes the test world "Particle Lab" (run/saves/particle_lab) with particle sources set out and signs saying
-        // what to try, checks the muting, photographs the inventory button and the screen into
-        // run/screenshots/lab_*.png and quits, the world saved to copy into the test instance's saves (devworld, left
-        // out of the jar).
+        // Makes the test world "Particle Lab" (run/saves/particle_lab) with particle sources set out and signs saying what to
+        // try, photographs the results into run/screenshots/lab_*.png and quits, the world saved to copy into the test
+        // instance's saves (devworld, left out of the jar).
         lab {
             client()
             programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
@@ -68,6 +76,13 @@ neoForge {
 
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
+            // The mixins' refmap names official names; the dev runs are on official names too.
+            systemProperty 'mixin.env.remapRefMap', 'true'
+            if (project.findProperty('jfr') != null) {
+                def jfrDir = file('run/jfr')
+                jfrDir.mkdirs()
+                jvmArguments.add("-XX:StartFlightRecording=filename=${new File(jfrDir, project.findProperty('jfr').toString() + '.jfr').absolutePath},settings=profile,dumponexit=true".toString())
+            }
             logLevel = org.slf4j.event.Level.DEBUG
         }
     }
@@ -79,30 +94,16 @@ neoForge {
     }
 }
 
-// Runtime-only dependencies for dev testing that must not leak into the published metadata.
-configurations {
-    runtimeClasspath.extendsFrom localRuntime
-}
-
-dependencies {
-    // Extreme Sound Muffler (optional at runtime): -PwithESM runs it in the dev client, to check the button beside its.
-    if (providers.gradleProperty('withESM').isPresent()) {
-        localRuntime "maven.modrinth:extreme_sound_muffler:${esm_version}"
-    }
-    // Main's nullness annotations (26.x ships them; 1.21.1 does not): only to compile.
-    compileOnly 'org.jspecify:jspecify:1.0.0'
-}
-
 // The test runs leave the person at the computer their mouse and their ears (the user's wishes): their window shows
-// behind the other windows without the focus and never grabs the mouse (dev.particlemuter.client.DevRuns, set by
-// particlemuter.keepMouse; the runs move the camera themselves), NeoForge's early loading window turned off for them in
+// behind the other windows without the focus and never grabs the mouse (dev.particlemuter.client.DevRuns and the dev mixins,
+// set by particlemuter.keepMouse; the runs turn the camera themselves), Forge's early loading window turned off for them in
 // run/config/fml.toml; every client run is muted (master volume 0 in run/options.txt; -Psound=on keeps the sound) and
-// skips the first-launch accessibility screen.
+// skips the first-launch accessibility screen. The test runs' names go in testRunNames as they are added.
 def testRunNames = ['runLab']
 def fmlConfig = file('run/config/fml.toml')
 def clientOptions = file('run/options.txt')
 def withSound = providers.gradleProperty('sound').isPresent()
-neoForge.runs.matching { ('run' + it.name.capitalize()) in testRunNames }.configureEach {
+legacyForge.runs.matching { ('run' + it.name.capitalize()) in testRunNames }.configureEach {
     systemProperty 'particlemuter.keepMouse', 'true'
 }
 tasks.matching { it.name in testRunNames }.configureEach {
@@ -114,14 +115,14 @@ tasks.matching { it.name in testRunNames }.configureEach {
                 : text + 'earlyWindowControl = false\n'
     }
 }
-tasks.matching { it.name.startsWith('run') }.configureEach {
+tasks.matching { it.name.startsWith('run') && !(it.name in ['runGameTestServer', 'runServer', 'runData']) }.configureEach {
     doFirst {
         String text = clientOptions.exists() ? clientOptions.text : ''
         clientOptions.parentFile.mkdirs()
         if (!withSound) {
             text = text =~ /(?m)^soundCategory_master:/
                     ? text.replaceAll(/(?m)^soundCategory_master:.*$/, 'soundCategory_master:0.0')
-                    : text + 'soundCategory_master:0.0\n'
+                    : text + (text.isEmpty() || text.endsWith('\n') ? '' : '\n') + 'soundCategory_master:0.0\n'
         }
         text = text =~ /(?m)^onboardAccessibility:/
                 ? text.replaceAll(/(?m)^onboardAccessibility:.*$/, 'onboardAccessibility:false')
@@ -130,11 +131,39 @@ tasks.matching { it.name.startsWith('run') }.configureEach {
     }
 }
 
+
+// The mixins' refmap (official names to Forge's SRG names for players' games), made as the code compiles.
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.legacy.mixins.json"
+    config "${mod_id}.mixins.json"
+}
+
+// Runtime-only dependencies for dev testing that must not leak into the published metadata.
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    // MixinExtras: its annotations for the refmap, and the library packed in the jar (Forge 1.20.1 carries none).
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${mixinextras_version}"))
+    implementation(jarJar("io.github.llamalad7:mixinextras-forge:${mixinextras_version}"))
+    // Main's nullness annotations (26.x ships them; 1.20.1 does not): only to compile, as annotations go unread.
+    compileOnly 'org.jspecify:jspecify:1.0.0'
+
+    // Extreme Sound Muffler (optional at runtime): -PwithESM runs it in the dev client, to check the button beside its.
+    if (providers.gradleProperty('withESM').isPresent()) {
+        modRuntimeOnly "maven.modrinth:extreme_sound_muffler:${esm_version}"
+    }
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,
-            neo_version            : neo_version,
+            forge_version          : forge_version,
+            forge_version_range    : forge_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
@@ -148,10 +177,12 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
     into "build/generated/sources/modMetadata"
 }
 sourceSets.main.resources.srcDir generateModMetadata
-neoForge.ideSyncTask generateModMetadata
+legacyForge.ideSyncTask generateModMetadata
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    // Every compile error at once while porting (javac stops at 100).
+    options.compilerArgs += ['-Xmaxerrs', '10000']
 }
 
 idea {
@@ -161,10 +192,6 @@ idea {
     }
 }
 
-// ---------------------------------------------------------------------------------------------
-// Deployment: every `build` ends with the fresh jar in the CurseForge test instance that `particlemuter_instance_dir_1_21_1`
-// names (set in your own ~/.gradle/gradle.properties); without one the jar just stays in build/libs.
-// ---------------------------------------------------------------------------------------------
 
 abstract class DeployToInstance extends DefaultTask {
     @InputFile
@@ -176,7 +203,7 @@ abstract class DeployToInstance extends DefaultTask {
     @Input
     abstract Property<String> getModId()
 
-    /** Whether an instance folder was named outright: then a missing one is an error. */
+    /** Whether an instance folder was named outright (particlemuter_instance_dir_1_20_1): then a missing one is an error. */
     @Input
     abstract Property<Boolean> getRequired()
 
@@ -190,14 +217,13 @@ abstract class DeployToInstance extends DefaultTask {
             String where = dir == null ? "(no folder set on this system)" : "${dir.parentFile}"
             if (required.get()) {
                 throw new GradleException("CurseForge instance not found at ${where}. " +
-                        "Set particlemuter_instance_dir_1_21_1 in gradle.properties or pass -Pparticlemuter_instance_dir_1_21_1=<path>.")
+                        "Set particlemuter_instance_dir_1_20_1 in gradle.properties or pass -Pparticlemuter_instance_dir_1_20_1=<path>.")
             }
-            logger.lifecycle("No CurseForge instance at ${where}: the jar was not deployed (set particlemuter_instance_dir_1_21_1 to deploy it).")
+            logger.lifecycle("No CurseForge instance at ${where}: the jar was not deployed (set particlemuter_instance_dir_1_20_1 to deploy it).")
             return
         }
         dir.mkdirs()
 
-        // Remove every previous build of this mod (any version) so only one copy is ever loaded.
         String prefix = modId.get() + '-'
         dir.listFiles()
                 .findAll { it.isFile() && it.name.startsWith(prefix) && it.name.endsWith('.jar') }
@@ -217,16 +243,16 @@ abstract class DeployToInstance extends DefaultTask {
     }
 }
 
-var instanceDir = providers.gradleProperty('particlemuter_instance_dir_1_21_1')
+var instanceDir = providers.gradleProperty('particlemuter_instance_dir_1_20_1')
         .filter { !it.isBlank() }
 
 var deployToInstance = tasks.register('deployToInstance', DeployToInstance) {
     group = 'deployment'
-    description = 'Copies the built mod jar into the CurseForge test instance (particlemuter_instance_dir_1_21_1), replacing older builds.'
-    jarFile = tasks.named('jar', Jar).flatMap { it.archiveFile }
+    description = 'Copies the built mod jar (reobfJar: Forge names) into the 1.20.1 CurseForge test instance, replacing older builds.'
+    jarFile = tasks.named('reobfJar').flatMap { it.archiveFile }
     modsDir = layout.dir(instanceDir.map { new File(it, 'mods') })
     modId = project.mod_id
-    required = providers.gradleProperty('particlemuter_instance_dir_1_21_1').map { !it.isBlank() }.orElse(false)
+    required = providers.gradleProperty('particlemuter_instance_dir_1_20_1').map { !it.isBlank() }.orElse(false)
     outputs.upToDateWhen { false }
 }
 

@@ -158,7 +158,7 @@ public final class Catalog {
         if (namespace.equals("minecraft")) {
             return "Minecraft";
         }
-        return net.neoforged.fml.ModList.get().getModContainerById(namespace).map(c -> c.getModInfo().getDisplayName())
+        return net.minecraftforge.fml.ModList.get().getModContainerById(namespace).map(c -> c.getModInfo().getDisplayName())
                 .orElse(readable(namespace));
     }
 

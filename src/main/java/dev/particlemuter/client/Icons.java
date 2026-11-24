@@ -84,7 +84,7 @@ public final class Icons {
     /** The first sprite of that particle's sprite set, or null when it has none (or none loaded). */
     private static TextureAtlasSprite sprite(String id) {
         try {
-            SpriteSet set = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$spriteSets().get(ResourceLocation.parse(id));
+            SpriteSet set = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$spriteSets().get(new ResourceLocation(id));
             if (set == null) {
                 return null;
             }
@@ -101,7 +101,7 @@ public final class Icons {
             if (itemId == null) {
                 return ItemStack.EMPTY;
             }
-            ResourceLocation key = ResourceLocation.parse(itemId);
+            ResourceLocation key = new ResourceLocation(itemId);
             Item item = BuiltInRegistries.ITEM.containsKey(key) ? BuiltInRegistries.ITEM.get(key) : null;
             return item == null ? ItemStack.EMPTY : new ItemStack(item);
         });

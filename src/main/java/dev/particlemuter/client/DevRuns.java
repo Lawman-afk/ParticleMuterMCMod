@@ -1,8 +1,8 @@
 package dev.particlemuter.client;
 
 import net.minecraft.client.Minecraft;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeWin32;
 import org.lwjgl.system.windows.User32;
@@ -27,7 +27,7 @@ public final class DevRuns {
         if (!KEEP_MOUSE) {
             return;
         }
-        NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> {
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.TickEvent.ClientTickEvent event) -> {if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
             if (ticks < BEHIND_FOR && ticks++ % 20 == 0) {
                 behind(Minecraft.getInstance());
             }

@@ -15,8 +15,8 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import dev.particlemuter.port.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.common.MinecraftForge;
 
 /**
  * The 11x11 button on the survival inventory and on the creative inventory's own tab, where the sound mod (Extreme
@@ -44,7 +44,7 @@ public final class InventoryButton extends AbstractWidget {
     }
 
     public static void register() {
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> {
+        MinecraftForge.EVENT_BUS.addListener((ScreenEvent.Init.Post event) -> {
             Screen screen = event.getScreen();
             // Exactly the two inventories (not mods' screens built on them).
             boolean creative = screen.getClass() == CreativeModeInventoryScreen.class;
@@ -55,12 +55,12 @@ public final class InventoryButton extends AbstractWidget {
             current.place(-1, -1);
             event.addListener(current);
         });
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Pre event) -> {
+        MinecraftForge.EVENT_BUS.addListener((ScreenEvent.Render.Pre event) -> {
             if (current != null && event.getScreen() == current.screen) {
                 current.place(event.getMouseX(), event.getMouseY());
             }
         });
-        NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> {
+        MinecraftForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> {
             if (current != null && current.dragging && event.getScreen() == current.screen) {
                 current.dragging = false;
                 Settings.setButtonPlace(current.creative, new int[] {current.getX() - current.left(), current.getY() - current.top()});
@@ -114,7 +114,7 @@ public final class InventoryButton extends AbstractWidget {
     }
 
     @Override
-    protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         GuiGraphicsExtractor g = new GuiGraphicsExtractor(graphics);
         boolean hover = isHovered() || dragging;
         Icons.toggle(g, getX(), getY(), true, hover);

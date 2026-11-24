@@ -209,13 +209,9 @@ public final class MuterScreen extends Screen {
     // --- drawing ----------------------------------------------------------------------------------------------------
 
     @Override
-    public void renderBackground(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderBackground(graphics, mouseX, mouseY, partialTick);
-        drawPanel(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
-    }
-
-    @Override
     public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics);
+        drawPanel(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, partialTick);
         drawTooltip(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
     }
@@ -460,7 +456,7 @@ public final class MuterScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mx, double my, double scrollY) {
         scroll = Math.max(0, Math.min(maxScroll(), scroll - (int) Math.signum(scrollY) * 3));
         return true;
     }

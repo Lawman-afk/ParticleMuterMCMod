@@ -54,10 +54,10 @@ import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
 /**
  * Development aid, left out of the released jar (build.gradle's jar task; found by its annotation, so nothing in the
@@ -87,7 +87,10 @@ public final class Lab {
     private Lab() {}
 
     @SubscribeEvent
-    public static void tick(ClientTickEvent.Post event) {
+    public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
         if (!ENABLED) {
             return;
         }
@@ -111,8 +114,7 @@ public final class Lab {
             try {
                 var settings = new LevelSettings("Particle Lab", GameType.CREATIVE, false, net.minecraft.world.Difficulty.NORMAL, true,
                         new net.minecraft.world.level.GameRules(), WorldDataConfiguration.DEFAULT);
-                mc.createWorldOpenFlows().createFreshLevel(fresh(mc, "particle_lab"), settings, new WorldOptions(0L, false, false), Lab::flat,
-                        mc.screen);
+                mc.createWorldOpenFlows().createFreshLevel(fresh(mc, "particle_lab"), settings, new WorldOptions(0L, false, false), Lab::flat);
             } catch (IOException e) {
                 ParticleMuter.LOGGER.error("Lab: could not make a world", e);
             }

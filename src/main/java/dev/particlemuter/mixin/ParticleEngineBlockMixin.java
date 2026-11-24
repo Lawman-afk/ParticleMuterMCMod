@@ -25,7 +25,7 @@ abstract class ParticleEngineBlockMixin {
     }
 
     /** A mined block's hit, a mod block's own effect too (counted here only when muted: else in crack, which follows). */
-    @Inject(method = "addBlockHitEffects", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "addBlockHitEffects", at = @At("HEAD"), cancellable = true, remap = false)
     private void particlemuter$blockHitEffects(BlockPos pos, BlockHitResult target, CallbackInfo ci) {
         if (Muting.hidesBlockHits()) {
             Muting.keepBlockHits();
