@@ -108,3 +108,7 @@ with Extreme Sound Muffler, to see the two buttons together.
 | 2026-11-23 | One hook for typed particles (`createParticle`'s `add`), not a null return (fireworks); flags on `ParticleType`; three extra rows for the untyped block-break, block-mining and item-pickup particles. |
 | 2026-11-23 | With ESM installed the button follows ESM's own widget, 12 px below it; without, it takes ESM's default place. |
 | 2026-11-23 | Settings in a Gson JSON (the same code on all four versions) rather than each loader's config. |
+| 2026-11-24 | Ports: 26.1.2 and 1.21.1 from main, 1.20.1 (Forge) from the 1.21.1 branch, each by its port.py; 1.21.1 and 1.20.1 draw main's screen through stand-ins for 26.x's GUI and input; their block hooks are the engine's. MixinExtras packed in the 1.20.1 jar. |
+| 2026-11-24 | The test world checks itself (6 checks: catalog, names, counts, smoke gone, muted still counted, block hook) and photographs the inventories (with Extreme Sound Muffler: its button, ours below) and every list. |
+| 2026-11-24 | Logo: four examples in the clean utility style with the stripe (`docs/branding/examples/`), waiting for the user's pick. |
+
