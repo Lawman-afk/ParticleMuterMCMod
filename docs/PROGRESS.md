@@ -14,6 +14,7 @@ user's own test and their pick of a logo.
 | 1.21.1 port (from main; GUI and input stand-ins; the engine's block hooks) | done |
 | 1.20.1 port (Forge, from 1.21.1; MixinExtras in the jar) | done; release jar checked in a real Forge client |
 | Deployed to the four instances, with the Lab world in each one's saves | done |
+| Compatibility: shaders (Iris/Oculus with Sodium/Embeddium), Sodium Extra/Rubidium Extra, Distant Horizons, resource packs | done: every run passes on every version (`tools/labs.sh`) |
 | The user's test in their instances | waiting |
 | Fixes after the user's test: creative tabs, Recent steady | done, 9 of 9 checks on every version, deployed |
 | Logo | chosen: "Halfway" (docs/branding/logo.png, icon.png); in every version's jar and mod list |
