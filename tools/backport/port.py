@@ -68,6 +68,8 @@ RULES = [
     sub(r"\b(BuiltInRegistries\.\w+)\.getValue\(", r"\1.get("),
     sub(r"\bWorldPresets([.:]{1,2})createTestWorldDimensions\b", r"WorldPresets\1createNormalWorldDimensions"),
     sub(r"\.getPlayers\(\)\.getFirst\(\)", ".getPlayers().get(0)"),
+    # 1.21.1's mod list: in NeoForge's gui package, made with new.
+    sub(r"\bnet\.neoforged\.neoforge\.client\.gui\.modlist\.ModListScreen\.create\(", "new net.neoforged.neoforge.client.gui.ModListScreen("),
 ]
 
 
