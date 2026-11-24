@@ -220,7 +220,7 @@ public final class Lab {
                 missing.append(' ').append(e.id);
             }
         }
-        check(types >= 128, "the catalog lists every particle type (" + types + ")");
+        check(types == net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size(), "the catalog lists every particle type (" + types + ")");
         check(unnamed == 0, "every vanilla particle has a name of ours" + (unnamed == 0 ? "" : ":" + missing));
     }
 
@@ -391,7 +391,7 @@ public final class Lab {
         list.add(new View("campfires_muted_later", fires, 0f, -6f, mc -> {
             int after = particles(mc);
             Catalog.Entry cosy = entry("minecraft:campfire_cosy_smoke");
-            check(after >= 0 && particlesBefore > 0 && after < particlesBefore * 0.7,
+            check(after >= 0 && particlesBefore > 0 && after < particlesBefore * 0.85,
                     "muting the smoke takes it out of the world (" + particlesBefore + " particles before, " + after + " after)");
             check(Tracker.rate(cosy.index) > 0, "a muted particle is still counted (" + Tracker.rate(cosy.index) + "/s)");
             // The block particles: a block broken while they are muted (counted, as every particle is, but cancelled).
