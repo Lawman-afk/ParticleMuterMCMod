@@ -2,5 +2,4 @@
 src/main/java/dev/particlemuter/ParticleMuter.java
 src/main/java/dev/particlemuter/client/Keys.java
 src/main/java/dev/particlemuter/client/DevRuns.java
-src/main/java/dev/particlemuter/devworld/Lab.java
 src/main/resources/particlemuter.mixins.json

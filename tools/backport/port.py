@@ -72,6 +72,27 @@ def swap(old: str, new: str):
 
 
 FILE_FIXES = {
+    # The Lab: Forge's client tick (a phase, not Pre/Post) and its subscriber annotation; Forge makes a world without
+    # the screen to come back to.
+    "src/main/java/dev/particlemuter/devworld/Lab.java": [
+        swap("""import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+""", """import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+"""),
+        swap("""    public static void tick(ClientTickEvent.Post event) {
+""", """    public static void tick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+"""),
+        swap("""Lab::flat,
+                        mc.screen);""", "Lab::flat);"),
+    ],
     # Forge's own method (not Minecraft's): no SRG name to map it to.
     "src/main/java/dev/particlemuter/mixin/ParticleEngineBlockMixin.java": [
         swap('@Inject(method = "addBlockHitEffects", at = @At("HEAD"), cancellable = true)',

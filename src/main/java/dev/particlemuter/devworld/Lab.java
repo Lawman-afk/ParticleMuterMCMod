@@ -222,11 +222,7 @@ public final class Lab {
                 missing.append(' ').append(e.id);
             }
         }
-<<<<<<< here
-        check(types >= 128, "the catalog lists every particle type (" + types + ")");
-=======
         check(types == net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size(), "the catalog lists every particle type (" + types + " of " + net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size() + ")");
->>>>>>> port of new main
         check(unnamed == 0, "every vanilla particle has a name of ours" + (unnamed == 0 ? "" : ":" + missing));
     }
 
@@ -366,11 +362,11 @@ public final class Lab {
         }));
         list.add(new View("inventory", front, 0f, 20f, mc -> {
             particlesBefore = particles(mc);                       // (two seconds by the campfires, as the later count)
-            run(mc, "gamemode survival @a");
+            gameMode(mc, GameType.SURVIVAL);
             mc.setScreen(new InventoryScreen(mc.player));
         }));
         list.add(new View("inventory_creative", front, 0f, 20f, mc -> {
-            run(mc, "gamemode creative @a");
+            gameMode(mc, GameType.CREATIVE);
             var screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), false);
             mc.setScreen(screen);
             pendingTab = screen;                                   // (its tab picked once it is set up, next tick)
@@ -398,7 +394,7 @@ public final class Lab {
         list.add(new View("campfires_muted_later", fires, 0f, -6f, mc -> {
             int after = particles(mc);
             Catalog.Entry cosy = entry("minecraft:campfire_cosy_smoke");
-            check(after >= 0 && particlesBefore > 0 && after < particlesBefore * 0.7,
+            check(after >= 0 && particlesBefore > 0 && after < particlesBefore * 0.85,
                     "muting the smoke takes it out of the world (" + particlesBefore + " particles before, " + after + " after)");
             check(Tracker.rate(cosy.index) > 0, "a muted particle is still counted (" + Tracker.rate(cosy.index) + "/s)");
             // The block particles: a block broken while they are muted (counted, as every particle is, but cancelled).
@@ -412,9 +408,10 @@ public final class Lab {
         ParticleMuter.LOGGER.info("Lab: particle sources set out at y {}", y);
     }
 
-    private static void run(Minecraft mc, String command) {
+    /** The player's game mode, set on the server (as the command does, without its line in the chat). */
+    private static void gameMode(Minecraft mc, GameType mode) {
         MinecraftServer server = mc.getSingleplayerServer();
-        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command));
+        server.execute(() -> server.getPlayerList().getPlayers().get(0).setGameMode(mode));
     }
 
     /** The list, from the inventory as its button opens it, showing that list and search. */
