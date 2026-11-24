@@ -34,8 +34,6 @@ public final class InventoryButton extends AbstractWidget {
     private final AbstractContainerScreen<?> screen;
     private final boolean creative;
     private boolean dragging;
-    /** The current button, so the events can find it. */
-    private static InventoryButton current;
 
     private InventoryButton(AbstractContainerScreen<?> screen, boolean creative) {
         super(0, 0, Icons.SIZE, Icons.SIZE, Component.translatable("particlemuter.button"));
@@ -51,23 +49,39 @@ public final class InventoryButton extends AbstractWidget {
             if (!creative && screen.getClass() != InventoryScreen.class) {
                 return;
             }
-            current = new InventoryButton((AbstractContainerScreen<?>) screen, creative);
-            current.place(-1, -1);
-            event.addListener(current);
+            InventoryButton button = new InventoryButton((AbstractContainerScreen<?>) screen, creative);
+            button.place(-1, -1);
+            event.addListener(button);
         });
         NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Pre event) -> {
-            if (current != null && event.getScreen() == current.screen) {
-                current.place(event.getMouseX(), event.getMouseY());
+            InventoryButton button = of(event.getScreen());
+            if (button != null) {
+                button.place(event.getMouseX(), event.getMouseY());
             }
         });
         NeoForge.EVENT_BUS.addListener((ScreenEvent.MouseButtonReleased.Pre event) -> {
-            if (current != null && current.dragging && event.getScreen() == current.screen) {
-                current.dragging = false;
-                Settings.setButtonPlace(current.creative, new int[] {current.getX() - current.left(), current.getY() - current.top()});
+            InventoryButton button = of(event.getScreen());
+            if (button != null && button.dragging) {
+                button.dragging = false;
+                Settings.setButtonPlace(button.creative, new int[] {button.getX() - button.left(), button.getY() - button.top()});
                 Settings.save();
                 event.setCanceled(true);
             }
         });
+    }
+
+    /**
+     * That screen's own button, if it has one. (Each screen keeps its own: in creative the game sets up the survival
+     * inventory first, which opens the creative one from inside its own setting up, so the last button made is not
+     * always the one on the screen.)
+     */
+    public static InventoryButton of(Screen screen) {
+        for (GuiEventListener child : screen.children()) {
+            if (child instanceof InventoryButton button) {
+                return button;
+            }
+        }
+        return null;
     }
 
     private int left() {
