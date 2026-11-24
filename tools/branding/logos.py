@@ -307,14 +307,14 @@ def paint(spec, mask: Image.Image, c, r) -> Image.Image:
 
 
 def sign(sparks=TWO, ring_t: float = T, bar_w: float = BAR, bar: str = "inside", direction: str = "\\", gap: bool = False,
-         ring_paint=WHITE, bar_paint=WHITE, spark_paint="glow", c=C, r: float = R) -> Image.Image:
+         ring_paint=WHITE, bar_paint=WHITE, spark_paint="glow", c=C, r: float = R, gap_w: float = GAP) -> Image.Image:
     """The lens and its sparks under a "no" sign of which every part can change:
     - ring_t, bar_w: the ring's and the bar's widths;
     - bar: "inside" (its ends under the ring, as the sign is drawn), "floating" (round ends short of the ring), "out"
       (the "off" icons' slash, through the ring and out past it, the ring cut round it), "cut" (no bar to see: only the
       gap it would leave in the sparks), or "none";
     - direction: "\\" (top left to bottom right, as the sign is drawn) or "/" (along the tape; the sparks mirrored);
-    - gap: whether the bar cuts a gap round itself in the sparks;
+    - gap: whether the bar cuts a gap round itself in the sparks, gap_w wide on each side;
     - ring_paint, bar_paint, spark_paint: a colour, "glow" (the mod's scale) or, for the sparks, "white";
     - c, r: the sign's middle and size (the sparks scaled with its lens)."""
     inner = r - ring_t
@@ -346,10 +346,10 @@ def sign(sparks=TWO, ring_t: float = T, bar_w: float = BAR, bar: str = "inside",
     else:
         a, b = along(inner, inner)
     if gap or bar in ("out", "cut"):
-        drop_crumbs(cut(content, line_mask(a, b, bar_w + 2 * GAP)))
+        drop_crumbs(cut(content, line_mask(a, b, bar_w + 2 * gap_w)))
     layer.alpha_composite(content)
     if bar == "out":
-        cut_ring = Image.fromarray(np.uint8(np.asarray(ring) * (np.asarray(line_mask(a, b, bar_w + 2 * GAP)) < 128)), "L")
+        cut_ring = Image.fromarray(np.uint8(np.asarray(ring) * (np.asarray(line_mask(a, b, bar_w + 2 * gap_w)) < 128)), "L")
         layer.alpha_composite(paint(ring_paint, cut_ring, c, r))
         layer.alpha_composite(paint(bar_paint, line_mask(a, b, bar_w), c, r))
         return layer
@@ -380,6 +380,32 @@ MORE = {
 
 def more_examples() -> dict:
     return {name: compose(make()) for name, make in MORE.items()}
+
+
+# ---- the third round: the user, "Maybe try a centre gapped one?": "centred" with the bar cutting its gap, by the gap's
+# width and the sign's weight; "centred" itself to compare -------------------------------------------------------------
+
+CENTRED = ((0.0, 0.0, 0.16), (0.12, -0.12, 0.055))
+THIN_CENTRED = ((0.0, 0.0, 0.17), (0.128, -0.128, 0.058))
+THIN = {"ring_t": 0.046, "bar_w": 0.042}
+
+GAPPED = {
+    "centred (round two)": lambda: sign(sparks=CENTRED),
+    "centred, gap": lambda: sign(sparks=CENTRED, gap=True),
+    "centred, fine gap": lambda: sign(sparks=CENTRED, gap=True, gap_w=0.013),
+    "centred, wide gap": lambda: sign(sparks=CENTRED, gap=True, gap_w=0.036),
+    "thin, centred, gap": lambda: sign(sparks=THIN_CENTRED, gap=True, **THIN),
+    "thin, centred, fine gap": lambda: sign(sparks=THIN_CENTRED, gap=True, gap_w=0.013, **THIN),
+}
+
+
+def gapped_examples() -> dict:
+    return {name: compose(make()) for name, make in GAPPED.items()}
+
+
+SETS = {"first": ("logos", lambda: examples(), lambda: SYMBOLS),
+        "more": ("logos_more", lambda: more_examples(), lambda: MORE),
+        "gapped": ("logos_gapped", lambda: gapped_examples(), lambda: GAPPED)}
 
 
 SYMBOLS = {
@@ -425,15 +451,16 @@ def sheet(logos: dict, path: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
-    ap.add_argument("--set", default="first", choices=("first", "more"))
+    ap.add_argument("--set", default="first", choices=tuple(SETS))
     ap.add_argument("--choose", default=None)
     args = ap.parse_args()
-    out = Path(args.out or S.ROOT / "build" / "branding" / ("logos" if args.set == "first" else "logos_more"))
+    folder, make_logos, make_symbols = SETS[args.set]
+    out = Path(args.out or S.ROOT / "build" / "branding" / folder)
     out.mkdir(parents=True, exist_ok=True)
     for old in out.glob("logo_*.png"):
         old.unlink()                                        # (examples from an earlier run)
-    logos = examples() if args.set == "first" else more_examples()
-    symbols = SYMBOLS if args.set == "first" else MORE
+    logos = make_logos()
+    symbols = make_symbols()
     for name, logo in logos.items():
         file = name.replace(", ", "_").replace(" ", "_").replace("(", "").replace(")", "")
         logo.save(out / f"logo_{file}_1024.png", optimize=True)
