@@ -57,8 +57,14 @@ public final class MuterScreen extends Screen {
     private int x, y, scroll;
     private boolean draggingBar, confirmUnmute, newlyMuted;
     private String query = "";
-    /** Ticks until the Recent list is sorted again (its order follows the counts, but not every frame). */
+    /**
+     * Ticks until the Recent list is sorted again: its order follows the counts, but only every few seconds and never
+     * under the mouse, so a row does not move as the player goes to click it (the counts themselves change live).
+     */
     private int resort;
+    private static final int RESORT_TICKS = 100;
+    /** Whether the mouse was over the list in the last frame drawn. */
+    private boolean mouseOnList;
 
     public MuterScreen(Screen parent) {
         super(Component.translatable("particlemuter.title"));
@@ -182,7 +188,7 @@ public final class MuterScreen extends Screen {
         }
         rows = list;
         scroll = Math.max(0, Math.min(scroll, maxScroll()));
-        resort = 20;
+        resort = RESORT_TICKS;
     }
 
     private static List<Catalog.Entry> group(List<Catalog.Entry> all, String namespace) {
@@ -201,7 +207,7 @@ public final class MuterScreen extends Screen {
 
     @Override
     public void tick() {
-        if (view == View.RECENT && --resort <= 0) {
+        if (view == View.RECENT && --resort <= 0 && !mouseOnList) {
             rebuild();                                          // (new particles join, the busiest go to the top)
         }
     }
@@ -225,6 +231,7 @@ public final class MuterScreen extends Screen {
         int lx = x + LIST_X, ly = y + LIST_Y, lw = LIST_W - BAR_W - 1;
         inset(g, lx - 1, ly - 1, LIST_W + 2, ROWS * ROW + 2);
         g.fill(lx, ly, lx + LIST_W, ly + ROWS * ROW, 0xFF000000);
+        mouseOnList = mouseX >= lx && mouseX < lx + LIST_W && mouseY >= ly && mouseY < ly + ROWS * ROW;
         Row hovered = null;
         for (int i = 0; i < ROWS && scroll + i < rows.size(); i++) {
             Row row = rows.get(scroll + i);

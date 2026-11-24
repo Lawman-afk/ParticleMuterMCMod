@@ -82,7 +82,9 @@ public final class Lab {
     private static int ground;
     private static final List<String> checks = new ArrayList<>();
     private static int particlesBefore = -1;
-    private static CreativeModeInventoryScreen pendingTab;
+    /** A creative tab to pick on the creative screen once it is set up; whether to open the survival inventory. */
+    private static net.minecraft.resources.ResourceKey<CreativeModeTab> pendingTab;
+    private static boolean pendingSurvival;
 
     private Lab() {}
 
@@ -129,9 +131,13 @@ public final class Lab {
             return;
         }
         if (pendingTab != null && mc.gui.screen() instanceof CreativeModeInventoryScreen open && open.width > 0) {
-            selectInventoryTab(open);                              // (the screen open now: the game may have made its own)
-            ParticleMuter.LOGGER.info("Lab: creative inventory tab picked: {}", open.isInventoryOpen());
+            selectTab(open, pendingTab);                           // (as a player clicks the tab)
+            ParticleMuter.LOGGER.info("Lab: creative tab {} picked; on the inventory's own tab: {}", pendingTab, open.isInventoryOpen());
             pendingTab = null;
+        }
+        if (pendingSurvival && mc.player != null && !mc.player.hasInfiniteMaterials()) {
+            mc.gui.setScreen(new InventoryScreen(mc.player));
+            pendingSurvival = false;
         }
         if (++waited < SETTLE) {
             return;
@@ -172,6 +178,7 @@ public final class Lab {
 
     /** The checks' results in the log, and the settings put back (nothing muted). */
     private static void finish(Minecraft mc) {
+        gameMode(mc, GameType.CREATIVE);
         Settings.unmuteAll();
         Settings.save();
         Muting.apply();
@@ -358,16 +365,27 @@ public final class Lab {
             mc.gui.setScreen(null);
             checkCatalog();
         }));
-        list.add(new View("inventory", front, 0f, 20f, mc -> {
+        // The creative inventory opened as a player opens it (the inventory key: the game sets up the survival screen,
+        // which hands over to the creative one), on another tab first, then its own tab, then another again: the
+        // button only on its own tab.
+        list.add(new View("creative_other_tab", front, 0f, 20f, mc -> {
             particlesBefore = particles(mc);                       // (two seconds by the campfires, as the later count)
-            gameMode(mc, GameType.SURVIVAL);
+            pendingTab = CreativeModeTabs.BUILDING_BLOCKS;
             mc.gui.setScreen(new InventoryScreen(mc.player));
         }));
         list.add(new View("inventory_creative", front, 0f, 20f, mc -> {
-            gameMode(mc, GameType.CREATIVE);
-            var screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), false);
-            mc.gui.setScreen(screen);
-            pendingTab = screen;                                   // (its tab picked once it is set up, next tick)
+            check(!buttonShown(mc), "no button on another creative tab");
+            pendingTab = CreativeModeTabs.INVENTORY;
+        }));
+        list.add(new View("creative_other_tab_again", front, 0f, 20f, mc -> {
+            check(buttonShown(mc), "the button on the creative inventory's own tab");
+            pendingTab = CreativeModeTabs.BUILDING_BLOCKS;
+        }));
+        list.add(new View("inventory", front, 0f, 20f, mc -> {
+            check(!buttonShown(mc), "no button once another creative tab is picked again");
+            gameMode(mc, GameType.SURVIVAL);
+            mc.gui.setScreen(null);
+            pendingSurvival = true;                                // (opened once the game knows the mode: next tick)
         }));
         list.add(new View("screen_all", front, 0f, 20f, mc -> screen(mc, "all", "")));
         list.add(new View("screen_recent", front, 0f, 20f, mc -> screen(mc, "recent", "")));
@@ -421,12 +439,18 @@ public final class Lab {
         screen.showForPicture(list, search);
     }
 
-    /** The creative inventory's own tab (Survival Inventory), as a player clicks it. */
-    private static void selectInventoryTab(CreativeModeInventoryScreen screen) {
+    /** Whether the open screen's Particle Muter button shows this frame. */
+    private static boolean buttonShown(Minecraft mc) {
+        var button = mc.gui.screen() == null ? null : dev.particlemuter.client.InventoryButton.of(mc.gui.screen());
+        return button != null && button.visible;
+    }
+
+    /** A creative tab picked, as a player clicks it. */
+    private static void selectTab(CreativeModeInventoryScreen screen, net.minecraft.resources.ResourceKey<CreativeModeTab> tab) {
         try {
             var select = CreativeModeInventoryScreen.class.getDeclaredMethod("selectTab", CreativeModeTab.class);
             select.setAccessible(true);
-            select.invoke(screen, net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(CreativeModeTabs.INVENTORY));
+            select.invoke(screen, net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB.getValueOrThrow(tab));
         } catch (ReflectiveOperationException e) {
             ParticleMuter.LOGGER.warn("Lab: could not pick the creative inventory's tab", e);
         }
