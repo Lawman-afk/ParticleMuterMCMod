@@ -15,13 +15,13 @@ import dev.particlemuter.Settings;
 import dev.particlemuter.Tracker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import dev.particlemuter.port.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.input.MouseButtonEvent;
+import dev.particlemuter.port.input.KeyEvent;
+import dev.particlemuter.port.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -209,10 +209,15 @@ public final class MuterScreen extends Screen {
     // --- drawing ----------------------------------------------------------------------------------------------------
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        drawPanel(g, mouseX, mouseY);
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
-        drawTooltip(g, mouseX, mouseY);
+    public void renderBackground(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.renderBackground(graphics, mouseX, mouseY, partialTick);
+        drawPanel(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
+    }
+
+    @Override
+    public void render(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        drawTooltip(new GuiGraphicsExtractor(graphics), mouseX, mouseY);
     }
 
     /** The row under the mouse this frame (its tooltip is drawn over everything). */
@@ -378,7 +383,8 @@ public final class MuterScreen extends Screen {
     // --- input ------------------------------------------------------------------------------------------------------
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(double mouseX_, double mouseY_, int button_) {
+        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);
         double mx = event.x(), my = event.y();
         if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT && search.isMouseOver(mx, my)) {
             search.setValue("");                                // (as the sound mod's search: a right click empties it)
@@ -394,7 +400,7 @@ public final class MuterScreen extends Screen {
             int i = scroll + (int) ((my - ly) / ROW);
             if (i < rows.size()) {
                 click(rows.get(i));
-                Button.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+                Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
                 return true;
             }
         }
@@ -402,7 +408,7 @@ public final class MuterScreen extends Screen {
             confirmUnmute = false;                              // (any other click calls off the unmute-all)
             labels();
         }
-        return super.mouseClicked(event, doubleClick);
+        return super.mouseClicked(event.x(), event.y(), event.button());
     }
 
     /** A row clicked: an entry muted or unmuted; a mod's row or header, all of its particles at once. */
@@ -427,18 +433,20 @@ public final class MuterScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+    public boolean mouseDragged(double mouseX_, double mouseY_, int button_, double dx, double dy) {
+        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);
         if (draggingBar) {
             dragBar(event.y());
             return true;
         }
-        return super.mouseDragged(event, dx, dy);
+        return super.mouseDragged(event.x(), event.y(), event.button(), dx, dy);
     }
 
     @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
+    public boolean mouseReleased(double mouseX_, double mouseY_, int button_) {
+        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);
         draggingBar = false;
-        return super.mouseReleased(event);
+        return super.mouseReleased(event.x(), event.y(), event.button());
     }
 
     private void dragBar(double my) {
@@ -458,13 +466,14 @@ public final class MuterScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyEvent event) {
+    public boolean keyPressed(int key_, int scancode_, int modifiers_) {
+        KeyEvent event = new KeyEvent(key_, scancode_, modifiers_);
         // The inventory key closes it, as it closes the inventory (unless the search is being typed in).
-        if (!search.isFocused() && Minecraft.getInstance().options.keyInventory.matches(event)) {
+        if (!search.isFocused() && Minecraft.getInstance().options.keyInventory.matches(event.key(), event.scancode())) {
             onClose();
             return true;
         }
-        return super.keyPressed(event);
+        return super.keyPressed(event.key(), event.scancode(), event.modifiers());
     }
 
     /** For the dev test world's pictures: the list and the search as a player would set them. */
@@ -484,6 +493,6 @@ public final class MuterScreen extends Screen {
         if (newlyMuted) {
             Muting.clearLiving();                               // (the ones already flying go too, not as they fade)
         }
-        Minecraft.getInstance().gui.setScreen(parent);
+        Minecraft.getInstance().setScreen(parent);
     }
 }

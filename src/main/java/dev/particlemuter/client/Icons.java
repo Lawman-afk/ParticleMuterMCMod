@@ -6,15 +6,15 @@ import java.util.Map;
 import dev.particlemuter.Catalog;
 import dev.particlemuter.ParticleMuter;
 import dev.particlemuter.mixin.ParticleEngineAccessor;
-import dev.particlemuter.mixin.ParticleResourcesAccessor;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import dev.particlemuter.port.GuiGraphicsExtractor;
 import net.minecraft.client.particle.SpriteSet;
-import net.minecraft.client.renderer.RenderPipelines;
+import dev.particlemuter.port.RenderPipelines;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -25,7 +25,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public final class Icons {
     /** The button in four states: muted, muted under the mouse, not muted, not muted under the mouse (11x11 each). */
-    public static final Identifier SHEET = ParticleMuter.id("textures/gui/icons.png");
+    public static final ResourceLocation SHEET = ParticleMuter.id("textures/gui/icons.png");
     public static final int SIZE = 11;
 
     /** Items for the particles with no sprite of their own (by id; ones missing on this version are skipped). */
@@ -84,12 +84,11 @@ public final class Icons {
     /** The first sprite of that particle's sprite set, or null when it has none (or none loaded). */
     private static TextureAtlasSprite sprite(String id) {
         try {
-            var resources = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$resources();
-            SpriteSet set = ((ParticleResourcesAccessor) resources).particlemuter$spriteSets().get(Identifier.parse(id));
+            SpriteSet set = ((ParticleEngineAccessor) Minecraft.getInstance().particleEngine).particlemuter$spriteSets().get(ResourceLocation.parse(id));
             if (set == null) {
                 return null;
             }
-            TextureAtlasSprite sprite = set.first();
+            TextureAtlasSprite sprite = set.get(0, 1);
             return sprite == null || sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation()) ? null : sprite;
         } catch (RuntimeException e) {
             return null;                                        // (a set never bound: its particle has no sprites)
@@ -102,8 +101,8 @@ public final class Icons {
             if (itemId == null) {
                 return ItemStack.EMPTY;
             }
-            Identifier key = Identifier.parse(itemId);
-            Item item = BuiltInRegistries.ITEM.containsKey(key) ? BuiltInRegistries.ITEM.getValue(key) : null;
+            ResourceLocation key = ResourceLocation.parse(itemId);
+            Item item = BuiltInRegistries.ITEM.containsKey(key) ? BuiltInRegistries.ITEM.get(key) : null;
             return item == null ? ItemStack.EMPTY : new ItemStack(item);
         });
     }

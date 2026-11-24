@@ -1,0 +1,4 @@
+# Files edited by hand on this branch (port.py keeps them; --sync merges main changes into them).
+src/main/java/dev/particlemuter/client/DevRuns.java
+src/main/java/dev/particlemuter/mixin/ParticleEngineAccessor.java
+src/main/resources/particlemuter.mixins.json

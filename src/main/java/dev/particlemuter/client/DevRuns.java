@@ -3,17 +3,16 @@ package dev.particlemuter.client;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import org.lwjgl.sdl.SDLHints;
-import org.lwjgl.sdl.SDLProperties;
-import org.lwjgl.sdl.SDLVideo;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeWin32;
 import org.lwjgl.system.windows.User32;
 
 /**
- * The dev test runs (the prepared world and its photographer: build.gradle sets {@code particlemuter.keepMouse}) leave
- * the person at the computer their mouse and their windows: the game's window shows without taking the focus and is
- * put behind the other windows, and the game never grabs the mouse ({@code mixin/DevMouseMixin}; the runs turn the
- * camera themselves). 26.3's window is SDL's: it is told before it shows not to take the focus when it does, and, once
- * shown, set behind. Players' games never set the property.
+ * The dev test runs (the photographers and the prepared worlds: build.gradle sets {@code particlemuter.keepMouse}) leave
+ * the person at the computer their mouse and their windows: the game's window is put behind the other windows without
+ * taking the focus, and the game never grabs the mouse ({@code mixin/DevMouseMixin}; the runs turn the camera
+ * themselves). 1.21.1's window is GLFW's (this branch's own, manual.txt; main's is SDL's). Players' games never set the
+ * property.
  */
 public final class DevRuns {
     public static final boolean KEEP_MOUSE = Boolean.getBoolean("particlemuter.keepMouse");
@@ -23,13 +22,11 @@ public final class DevRuns {
 
     private DevRuns() {}
 
-    /** Called as the client starts, before the window shows. */
+    /** Called as the client starts. */
     public static void register() {
         if (!KEEP_MOUSE) {
             return;
         }
-        SDLHints.SDL_SetHint(SDLHints.SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, "0");
-        SDLHints.SDL_SetHint(SDLHints.SDL_HINT_WINDOW_ACTIVATE_WHEN_RAISED, "0");
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> {
             if (ticks < BEHIND_FOR && ticks++ % 20 == 0) {
                 behind(Minecraft.getInstance());
@@ -37,16 +34,15 @@ public final class DevRuns {
         });
     }
 
-    /** The game's window behind every other, not activated (Windows). */
+    /** The game's window behind every other, not activated, and not focused when shown again (Windows). */
     private static void behind(Minecraft mc) {
-        if (net.minecraft.util.Util.getPlatform() != net.minecraft.util.Util.OS.WINDOWS) {
-            return;
-        }
-        long window = mc.getWindow().handle();
-        int props = SDLVideo.SDL_GetWindowProperties(window);
-        long hwnd = SDLProperties.SDL_GetPointerProperty(props, SDLVideo.SDL_PROP_WINDOW_WIN32_HWND_POINTER, 0L);
-        if (hwnd != 0) {
-            User32.SetWindowPos(null, hwnd, User32.HWND_BOTTOM, 0, 0, 0, 0, User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE);
+        long window = mc.getWindow().getWindow();
+        GLFW.glfwSetWindowAttrib(window, GLFW.GLFW_FOCUS_ON_SHOW, GLFW.GLFW_FALSE);
+        if (net.minecraft.Util.getPlatform() == net.minecraft.Util.OS.WINDOWS) {
+            long hwnd = GLFWNativeWin32.glfwGetWin32Window(window);
+            if (hwnd != 0) {
+                User32.SetWindowPos(hwnd, User32.HWND_BOTTOM, 0, 0, 0, 0, User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE);
+            }
         }
     }
 }

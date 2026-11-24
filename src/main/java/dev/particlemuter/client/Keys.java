@@ -9,8 +9,8 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 
 /** A key for the list (none by default, as the sound mod's: the inventory button is the way in). */
 public final class Keys {
-    public static final KeyMapping OPEN = new KeyMapping("key.particlemuter.open", InputConstants.Type.KEYBOARD,
-            InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MISC);
+    public static final KeyMapping OPEN = new KeyMapping("key.particlemuter.open", InputConstants.Type.KEYSYM,
+            InputConstants.UNKNOWN.getValue(), "key.categories.misc");
 
     private Keys() {}
 
@@ -22,8 +22,8 @@ public final class Keys {
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
         while (OPEN.consumeClick()) {
-            if (mc.gui.screen() == null && mc.player != null) {
-                mc.gui.setScreen(new MuterScreen(null));
+            if (mc.screen == null && mc.player != null) {
+                mc.setScreen(new MuterScreen(null));
             }
         }
     }

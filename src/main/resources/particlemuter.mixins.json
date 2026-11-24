@@ -4,12 +4,11 @@
   "package": "dev.particlemuter.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ClientLevelMixin",
     "ClientPacketListenerMixin",
     "DevMouseMixin",
     "ParticleEngineAccessor",
+    "ParticleEngineBlockMixin",
     "ParticleEngineMixin",
-    "ParticleResourcesAccessor",
     "ParticleTypeMixin"
   ],
   "injectors": {

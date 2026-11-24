@@ -11,7 +11,7 @@ import java.util.Map;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.locale.Language;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Every particle the player can mute: each registered particle type, Minecraft's and every mod's, plus the three kinds
@@ -101,7 +101,7 @@ public final class Catalog {
         list.add(new Entry(Kind.BLOCK_HITS, "particlemuter:block_hits", "minecraft", null, BLOCK_HITS));
         list.add(new Entry(Kind.ITEM_PICKUP, "particlemuter:item_pickup", "minecraft", null, ITEM_PICKUP));
         for (ParticleType<?> type : BuiltInRegistries.PARTICLE_TYPE) {
-            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(type);
+            ResourceLocation id = BuiltInRegistries.PARTICLE_TYPE.getKey(type);
             if (id == null) {
                 continue;
             }

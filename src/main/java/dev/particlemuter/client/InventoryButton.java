@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 import dev.particlemuter.Settings;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import dev.particlemuter.port.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratedElementType;
@@ -13,7 +13,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.input.MouseButtonEvent;
+import dev.particlemuter.port.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -71,11 +71,11 @@ public final class InventoryButton extends AbstractWidget {
     }
 
     private int left() {
-        return screen.getLeftPos();
+        return screen.getGuiLeft();
     }
 
     private int top() {
-        return screen.getTopPos();
+        return screen.getGuiTop();
     }
 
     /** Where it is this frame, and whether it shows (the creative inventory: only on its own tab). */
@@ -114,7 +114,8 @@ public final class InventoryButton extends AbstractWidget {
     }
 
     @Override
-    protected void extractWidgetRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+    protected void renderWidget(net.minecraft.client.gui.GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        GuiGraphicsExtractor g = new GuiGraphicsExtractor(graphics);
         boolean hover = isHovered() || dragging;
         Icons.toggle(g, getX(), getY(), true, hover);
         if (isHovered() && !dragging) {
@@ -130,13 +131,14 @@ public final class InventoryButton extends AbstractWidget {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(double mouseX_, double mouseY_, int button_) {
+        MouseButtonEvent event = new MouseButtonEvent(mouseX_, mouseY_, button_);
         if (!active || !visible || !isMouseOver(event.x(), event.y())) {
             return false;
         }
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             playDownSound(Minecraft.getInstance().getSoundManager());
-            Minecraft.getInstance().gui.setScreen(new MuterScreen(screen));
+            Minecraft.getInstance().setScreen(new MuterScreen(screen));
             return true;
         }
         if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {

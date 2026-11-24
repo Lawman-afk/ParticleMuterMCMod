@@ -12,7 +12,7 @@ version = mod_version
 group = mod_group_id
 
 repositories {
-    // Extreme Sound Muffler (-PwithESM), Iris and Sodium (-PwithIris), as released: compatibility runs only, never
+    // Extreme Sound Muffler (-PwithESM), as released: compatibility runs only, never
     // dependencies of the mod.
     exclusiveContent {
         forRepository {
@@ -28,7 +28,7 @@ repositories {
 }
 
 base {
-    archivesName = mod_id
+    archivesName = "${mod_id}-mc${minecraft_version}"
 }
 
 // The licence travels in the jar (MIT asks for its notice in every copy); the dev aid (the prepared test world and
@@ -41,8 +41,9 @@ tasks.named('jar', Jar) {
     exclude('dev/particlemuter/devworld/**')
 }
 
-// Mojang ships Java 25 to players in 26.3, so the mod targets Java 25.
-java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+// Minecraft 1.21.1 runs on Java 21, so this branch targets Java 21.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-Xmaxerrs', '10000'] }
 
 // The photographer's window, width x height: -PshotSize=1920x1080 for the mod page's gallery pictures.
 def shotSize = (project.findProperty('shotSize') ?: '1280x720').toString().split('x')
@@ -67,9 +68,6 @@ neoForge {
 
         configureEach {
             systemProperty 'forge.logging.markers', 'REGISTRIES'
-            if (providers.gradleProperty('withIris').isPresent()) {
-                systemProperty 'neoforge.disableBlaze3DValidation', 'true'
-            }
             logLevel = org.slf4j.event.Level.DEBUG
         }
     }
@@ -91,11 +89,8 @@ dependencies {
     if (providers.gradleProperty('withESM').isPresent()) {
         localRuntime "maven.modrinth:extreme_sound_muffler:${esm_version}"
     }
-    // Shader packs (optional at runtime): -PwithIris runs Iris and Sodium in the dev client.
-    if (providers.gradleProperty('withIris').isPresent()) {
-        localRuntime "maven.modrinth:iris:${iris_version}"
-        localRuntime "maven.modrinth:sodium:${sodium_version}"
-    }
+    // Main's nullness annotations (26.x ships them; 1.21.1 does not): only to compile.
+    compileOnly 'org.jspecify:jspecify:1.0.0'
 }
 
 // The test runs leave the person at the computer their mouse and their ears (the user's wishes): their window shows
@@ -167,7 +162,7 @@ idea {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Deployment: every `build` ends with the fresh jar in the CurseForge test instance that `particlemuter_instance_dir`
+// Deployment: every `build` ends with the fresh jar in the CurseForge test instance that `particlemuter_instance_dir_1_21_1`
 // names (set in your own ~/.gradle/gradle.properties); without one the jar just stays in build/libs.
 // ---------------------------------------------------------------------------------------------
 
@@ -195,9 +190,9 @@ abstract class DeployToInstance extends DefaultTask {
             String where = dir == null ? "(no folder set on this system)" : "${dir.parentFile}"
             if (required.get()) {
                 throw new GradleException("CurseForge instance not found at ${where}. " +
-                        "Set particlemuter_instance_dir in gradle.properties or pass -Pparticlemuter_instance_dir=<path>.")
+                        "Set particlemuter_instance_dir_1_21_1 in gradle.properties or pass -Pparticlemuter_instance_dir_1_21_1=<path>.")
             }
-            logger.lifecycle("No CurseForge instance at ${where}: the jar was not deployed (set particlemuter_instance_dir to deploy it).")
+            logger.lifecycle("No CurseForge instance at ${where}: the jar was not deployed (set particlemuter_instance_dir_1_21_1 to deploy it).")
             return
         }
         dir.mkdirs()
@@ -222,16 +217,16 @@ abstract class DeployToInstance extends DefaultTask {
     }
 }
 
-var instanceDir = providers.gradleProperty('particlemuter_instance_dir')
+var instanceDir = providers.gradleProperty('particlemuter_instance_dir_1_21_1')
         .filter { !it.isBlank() }
 
 var deployToInstance = tasks.register('deployToInstance', DeployToInstance) {
     group = 'deployment'
-    description = 'Copies the built mod jar into the CurseForge test instance (particlemuter_instance_dir), replacing older builds.'
+    description = 'Copies the built mod jar into the CurseForge test instance (particlemuter_instance_dir_1_21_1), replacing older builds.'
     jarFile = tasks.named('jar', Jar).flatMap { it.archiveFile }
     modsDir = layout.dir(instanceDir.map { new File(it, 'mods') })
     modId = project.mod_id
-    required = providers.gradleProperty('particlemuter_instance_dir').map { !it.isBlank() }.orElse(false)
+    required = providers.gradleProperty('particlemuter_instance_dir_1_21_1').map { !it.isBlank() }.orElse(false)
     outputs.upToDateWhen { false }
 }
 

@@ -3,7 +3,7 @@ package dev.particlemuter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * The checks the mixins make as each particle is made: the hot path. Each particle type carries its own flag
@@ -52,7 +52,7 @@ public final class Muting {
     public static void apply() {
         boolean any = false;
         for (ParticleType<?> type : BuiltInRegistries.PARTICLE_TYPE) {
-            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(type);
+            ResourceLocation id = BuiltInRegistries.PARTICLE_TYPE.getKey(type);
             boolean muted = id != null && Settings.isMuted(id.toString());
             ((MutedFlag) type).particlemuter$setMuted(muted);
             any |= muted;
@@ -68,7 +68,7 @@ public final class Muting {
     public static void clearLiving() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
-            mc.particleEngine.clearParticles();
+            ((dev.particlemuter.mixin.ParticleEngineAccessor) mc.particleEngine).particlemuter$clear();
         }
     }
 }
