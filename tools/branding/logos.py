@@ -403,9 +403,38 @@ def gapped_examples() -> dict:
     return {name: compose(make()) for name, make in GAPPED.items()}
 
 
+# ---- the fourth round: the user, "Maybe try one inbetween sizes for centered fine gap, and thin centred fine gap?":
+# the sign's weight in steps from the one to the other (the ring and bar thinner, the sparks larger as they go), all
+# with the fine gap --------------------------------------------------------------------------------------------------
+
+FINE_GAP = 0.013
+
+
+def weighted(t: float) -> Image.Image:
+    """The centred sign with the fine gap, t of the way from "centred, fine gap" (0) to "thin, centred, fine gap" (1)."""
+    def mix(a: float, b: float) -> float:
+        return a + (b - a) * t
+    sparks = tuple(tuple(mix(p, q) for p, q in zip(s0, s1)) for s0, s1 in zip(CENTRED, THIN_CENTRED))
+    return sign(sparks=sparks, gap=True, gap_w=FINE_GAP, ring_t=mix(T, THIN["ring_t"]), bar_w=mix(BAR, THIN["bar_w"]))
+
+
+BETWEEN = {
+    "centred, fine gap": lambda: weighted(0.0),
+    "between, 1 (a quarter)": lambda: weighted(0.25),
+    "between, 2 (halfway)": lambda: weighted(0.5),
+    "between, 3 (three quarters)": lambda: weighted(0.75),
+    "thin, centred, fine gap": lambda: weighted(1.0),
+}
+
+
+def between_examples() -> dict:
+    return {name: compose(make()) for name, make in BETWEEN.items()}
+
+
 SETS = {"first": ("logos", lambda: examples(), lambda: SYMBOLS),
         "more": ("logos_more", lambda: more_examples(), lambda: MORE),
-        "gapped": ("logos_gapped", lambda: gapped_examples(), lambda: GAPPED)}
+        "gapped": ("logos_gapped", lambda: gapped_examples(), lambda: GAPPED),
+        "between": ("logos_between", lambda: between_examples(), lambda: BETWEEN)}
 
 
 SYMBOLS = {
