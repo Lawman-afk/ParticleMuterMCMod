@@ -82,6 +82,7 @@ public final class Lab {
     private static int ground;
     private static final List<String> checks = new ArrayList<>();
     private static int particlesBefore = -1;
+    private static CreativeModeInventoryScreen pendingTab;
 
     private Lab() {}
 
@@ -126,6 +127,11 @@ public final class Lab {
             built = true;
             server.execute(() -> build(server.overworld()));
             return;
+        }
+        if (pendingTab != null && mc.screen == pendingTab && pendingTab.width > 0) {
+            selectInventoryTab(pendingTab);
+            ParticleMuter.LOGGER.info("Lab: creative inventory tab picked: {}", pendingTab.isInventoryOpen());
+            pendingTab = null;
         }
         if (++waited < SETTLE) {
             return;
@@ -183,7 +189,9 @@ public final class Lab {
 
     private static int particles(Minecraft mc) {
         try {
-            return Integer.parseInt(mc.particleEngine.countParticles().trim());
+            // (26.x lists each group's count, the total last; older versions give the total alone)
+            String[] words = mc.particleEngine.countParticles().trim().split(" ");
+            return Integer.parseInt(words[words.length - 1]);
         } catch (NumberFormatException e) {
             return -1;
         }
@@ -260,11 +268,10 @@ public final class Lab {
             }
         }
         set(level, -10, y + 3, z + 3, Blocks.STONE.defaultBlockState());
-        set(level, -10, y + 2, z + 3, Blocks.STONE.defaultBlockState());
         set(level, -10, y + 4, z + 3, Blocks.LAVA.defaultBlockState());
-        set(level, -10, y + 2, z + 2, Blocks.AIR.defaultBlockState());
-        set(level, -10, y + 3, z + 2, Blocks.DRIPSTONE_BLOCK.defaultBlockState());
-        set(level, -10, y + 4, z + 2, Blocks.LAVA.defaultBlockState());
+        for (int[] d : new int[][] {{-1, 0}, {1, 0}, {0, 1}, {0, -1}}) {
+            set(level, -10 + d[0], y + 4, z + 3 + d[1], Blocks.GLASS.defaultBlockState());
+        }
         sign(level, -10, y, z - 2, "Lava: pops,", "smoke, and", "drips from", "the ledge");
 
         // Water and crying obsidian dripping from the underside of floating blocks.
@@ -350,9 +357,9 @@ public final class Lab {
         list.add(new View("campfires", fires, 0f, -6f, mc -> {
             mc.setScreen(null);
             checkCatalog();
-            particlesBefore = particles(mc);
         }));
         list.add(new View("inventory", front, 0f, 20f, mc -> {
+            particlesBefore = particles(mc);                       // (two seconds by the campfires, as the later count)
             run(mc, "gamemode survival @a");
             mc.setScreen(new InventoryScreen(mc.player));
         }));
@@ -360,7 +367,7 @@ public final class Lab {
             run(mc, "gamemode creative @a");
             var screen = new CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), false);
             mc.setScreen(screen);
-            selectInventoryTab(screen);
+            pendingTab = screen;                                   // (its tab picked once it is set up, next tick)
         }));
         list.add(new View("screen_all", front, 0f, 20f, mc -> screen(mc, "all", "")));
         list.add(new View("screen_recent", front, 0f, 20f, mc -> screen(mc, "recent", "")));

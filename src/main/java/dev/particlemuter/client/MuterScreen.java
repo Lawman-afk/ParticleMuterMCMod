@@ -210,6 +210,16 @@ public final class MuterScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        drawPanel(g, mouseX, mouseY);
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
+        drawTooltip(g, mouseX, mouseY);
+    }
+
+    /** The row under the mouse this frame (its tooltip is drawn over everything). */
+    private Row hovered;
+
+    /** The panel, its title and the list (under the widgets). */
+    private void drawPanel(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         panel(g, x, y, W, H);
         g.text(font, title, x + (W - font.width(title)) / 2, y + 7, TEXT_DARK, false);   // (vanilla's container grey, no shadow)
         int lx = x + LIST_X, ly = y + LIST_Y, lw = LIST_W - BAR_W - 1;
@@ -237,7 +247,10 @@ public final class MuterScreen extends Screen {
             }
         }
         scrollbar(g, lx + LIST_W - BAR_W, ly, ROWS * ROW);
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+        this.hovered = hovered;
+    }
+
+    private void drawTooltip(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         if (hovered != null) {
             tooltip(g, hovered, mouseX, mouseY);
         }
