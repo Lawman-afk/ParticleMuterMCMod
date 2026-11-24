@@ -63,6 +63,8 @@ neoForge {
             client()
             programArguments.addAll '--width', shotSize[0], '--height', shotSize[1]
             systemProperty 'particlemuter.lab', 'true'
+            // -PwithPack: the Lab makes and turns on a resource pack of its own that redraws some particles.
+            systemProperty 'particlemuter.pack', providers.gradleProperty('withPack').isPresent().toString()
         }
 
         configureEach {
@@ -95,6 +97,14 @@ dependencies {
     if (providers.gradleProperty('withIris').isPresent()) {
         localRuntime "maven.modrinth:iris:${iris_version}"
         localRuntime "maven.modrinth:sodium:${sodium_version}"
+    }
+    // Sodium Extra (its own particle switches; with -PwithIris, which brings Sodium): -PwithSodiumExtra.
+    if (providers.gradleProperty('withSodiumExtra').isPresent()) {
+        localRuntime "maven.modrinth:sodium-extra:${sodium_extra_version}"
+    }
+    // Distant Horizons (optional at runtime): -PwithDH.
+    if (providers.gradleProperty('withDH').isPresent()) {
+        localRuntime "maven.modrinth:distanthorizons:${dh_version}"
     }
 }
 
@@ -133,6 +143,74 @@ tasks.matching { it.name.startsWith('run') }.configureEach {
                 : text + 'onboardAccessibility:false\n'
         clientOptions.text = text
     }
+}
+
+// The shader packs the dev runs test with (-PwithIris; -PirisPack=complementary|unbound|bsl|bliss|photon|solas|makeup|off
+// picks one, Complementary by default): put in run/shaderpacks, and Iris's config pointed at the one picked.
+configurations {
+    shaderPacks {
+        canBeConsumed = false
+        transitive = false
+    }
+}
+dependencies {
+    shaderPacks "maven.modrinth:complementary-reimagined:${complementary_version}@zip"
+    shaderPacks "maven.modrinth:bsl-shaders:${bsl_version}@zip"
+    shaderPacks "maven.modrinth:bliss-shader:${bliss_version}@zip"
+    shaderPacks "maven.modrinth:photon-shader:${photon_version}@zip"
+    shaderPacks "maven.modrinth:solas-shader:${solas_version}@zip"
+    shaderPacks "maven.modrinth:makeup-ultra-fast-shaders:${makeup_version}@zip"
+    shaderPacks "maven.modrinth:complementary-unbound:${unbound_version}@zip"
+}
+var installShaderPacks = tasks.register('installShaderPacks') {
+    group = 'development'
+    description = 'Puts the test shader packs in run/shaderpacks and sets Iris to the one -PirisPack names.'
+    var packs = configurations.shaderPacks
+    var pick = (project.findProperty('irisPack') ?: 'complementary').toString()
+    var runDir = file('run')
+    inputs.files(packs)
+    outputs.upToDateWhen { false }
+    doLast {
+        var dir = new File(runDir, 'shaderpacks')
+        dir.mkdirs()
+        // Each pack's file by the name -PirisPack picks it by.
+        var names = ['complementary-reimagined': 'complementary', 'complementary-unbound': 'unbound', 'bsl-shaders': 'bsl',
+                     'bliss-shader': 'bliss', 'photon-shader': 'photon', 'solas-shader': 'solas', 'makeup-ultra-fast-shaders': 'makeup']
+        String chosen = null
+        var wanted = packs.files.collect { f -> var key = names.keySet().find { f.name.startsWith(it) }; key != null ? names[key] + '.zip' : f.name }
+        dir.listFiles().findAll { it.name.endsWith('.zip') && !wanted.contains(it.name) }.each { it.delete() }   // packs named otherwise before
+        packs.files.each { f ->
+            var key = names.keySet().find { f.name.startsWith(it) }
+            var name = key != null ? names[key] + '.zip' : f.name
+            java.nio.file.Files.copy(f.toPath(), new File(dir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            if (key != null && names[key] == pick.toLowerCase()) {
+                chosen = name
+            }
+        }
+        var config = new File(runDir, 'config/iris.properties')
+        config.parentFile.mkdirs()
+        var props = new Properties()
+        if (config.exists()) {
+            config.withInputStream { props.load(it) }
+        }
+        props.setProperty('enableShaders', (pick != 'off' && chosen != null).toString())
+        if (chosen != null) {
+            props.setProperty('shaderPack', chosen)
+        }
+        config.withOutputStream { props.store(it, 'Set by gradle installShaderPacks') }
+        // Iris's own metadata warns as it loads, and NeoForge's warning screen would hold the photographers before
+        // the title screen: the dev runs with Iris skip it.
+        var neo = new File(runDir, 'config/neoforge-client.toml')
+        if (neo.exists()) {
+            neo.text = neo.text.replaceAll(/(?m)^showLoadWarnings\s*=\s*true/, 'showLoadWarnings = false')
+        } else {
+            neo.text = 'showLoadWarnings = false\n'
+        }
+        logger.lifecycle("Shader packs in ${dir}; Iris set to ${pick == 'off' ? 'no pack' : chosen}")
+    }
+}
+if (providers.gradleProperty('withIris').isPresent()) {
+    tasks.matching { it.name.startsWith('run') && it.name != 'runData' }.configureEach { it.dependsOn installShaderPacks }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
