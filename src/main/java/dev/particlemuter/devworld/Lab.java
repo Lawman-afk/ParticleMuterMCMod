@@ -85,6 +85,8 @@ public final class Lab {
     /** A creative tab to pick on the creative screen once it is set up; whether to open the survival inventory. */
     private static net.minecraft.resources.ResourceKey<CreativeModeTab> pendingTab;
     private static boolean pendingSurvival;
+    /** Ticks since the game's mod list was opened for its picture (-1: not open): searched, then this mod picked. */
+    private static int modListTicks = -1;
 
     private Lab() {}
 
@@ -140,6 +142,16 @@ public final class Lab {
         if (pendingSurvival && mc.player != null && !mc.player.getAbilities().instabuild) {
             mc.setScreen(new InventoryScreen(mc.player));
             pendingSurvival = false;
+        }
+        if (modListTicks >= 0 && mc.screen != null && mc.screen.width > 0
+                && mc.screen.getClass().getSimpleName().equals("ModListScreen")) {
+            modListTicks++;
+            if (modListTicks == 2) {
+                searchModList(mc.screen, "Particle Muter");
+            } else if (modListTicks == 8) {
+                pickFirstMod(mc.screen);
+                modListTicks = -1;
+            }
         }
         if (++waited < SETTLE) {
             return;
@@ -422,8 +434,66 @@ public final class Lab {
             mc.level.addDestroyBlockEffect(new BlockPos(0, ground + 1, 4), Blocks.STONE.defaultBlockState());
             check(Tracker.current(Catalog.BLOCK_BREAKING) == counted + 1, "a block broken while block breaking is muted goes through the hook");
         }));
+        // The game's mod list, searched for the mod and showing it, as a player finds it there: its logo.
+        list.add(new View("mod_list", front, 0f, 20f, mc -> {
+            mc.setScreen(new net.minecraftforge.client.gui.ModListScreen(null));
+            modListTicks = 0;
+        }));
         views = list;
         ParticleMuter.LOGGER.info("Lab: particle sources set out at y {}", y);
+    }
+
+    /** Types into the mod list's search box (found by its type: its name and place differ between versions). */
+    private static void searchModList(net.minecraft.client.gui.screens.Screen screen, String text) {
+        for (Class<?> k = screen.getClass(); k != null && k != Object.class; k = k.getSuperclass()) {
+            for (var field : k.getDeclaredFields()) {
+                if (net.minecraft.client.gui.components.EditBox.class.isAssignableFrom(field.getType())) {
+                    try {
+                        field.setAccessible(true);
+                        if (field.get(screen) instanceof net.minecraft.client.gui.components.EditBox box) {
+                            box.setValue(text);
+                            return;
+                        }
+                    } catch (ReflectiveOperationException | RuntimeException e) {
+                        ParticleMuter.LOGGER.warn("Lab: could not search the mod list", e);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /** Picks the first mod the mod list shows, as a player clicks it (the screen's own setSelected where it has one,
+     * else the list's). */
+    private static void pickFirstMod(net.minecraft.client.gui.screens.Screen screen) {
+        for (var child : screen.children()) {
+            if (child instanceof net.minecraft.client.gui.components.AbstractSelectionList<?> list && !list.children().isEmpty()) {
+                Object entry = list.children().get(0);
+                try {
+                    if (!select(screen, entry) && !select(list, entry)) {
+                        ParticleMuter.LOGGER.warn("Lab: the mod list has no way to pick {}", entry);
+                        return;
+                    }
+                    ParticleMuter.LOGGER.info("Lab: mod list: {} picked", entry);
+                } catch (ReflectiveOperationException | RuntimeException e) {
+                    ParticleMuter.LOGGER.warn("Lab: could not pick a mod in the mod list", e);
+                }
+                return;
+            }
+        }
+        ParticleMuter.LOGGER.warn("Lab: the mod list showed no mods");
+    }
+
+    /** Calls the object's public setSelected that takes that entry, if it has one. */
+    private static boolean select(Object on, Object entry) throws ReflectiveOperationException {
+        for (var method : on.getClass().getMethods()) {
+            if (method.getName().equals("setSelected") && method.getParameterCount() == 1 && method.getParameterTypes()[0].isInstance(entry)) {
+                method.setAccessible(true);
+                method.invoke(on, entry);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The player's game mode, set on the server (as the command does, without its line in the chat). */

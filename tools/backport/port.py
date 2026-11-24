@@ -52,6 +52,8 @@ def sub(pattern: str, repl, flags: int = 0):
 
 RULES = [
     sub(r"\.hasInfiniteMaterials\(\)", ".getAbilities().instabuild"),
+    # Forge's mod list.
+    sub(r"\bnet\.neoforged\.neoforge\.client\.gui\.ModListScreen\b", "net.minecraftforge.client.gui.ModListScreen"),
     sub(r"\bNeoForge\.EVENT_BUS\b", "MinecraftForge.EVENT_BUS"),
     sub(r"\bnet\.neoforged\.fml\.loading\.FMLPaths\b", "net.minecraftforge.fml.loading.FMLPaths"),
     sub(r"\bnet\.neoforged\.fml\.ModList\b", "net.minecraftforge.fml.ModList"),

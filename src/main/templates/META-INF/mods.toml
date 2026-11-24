@@ -7,6 +7,9 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
+# The logo over the mod's details in the mod list, drawn smoothly.
+logoFile="particlemuter_logo.png"
+logoBlur=true
 # Client-side only: a server needs nothing of it, and the server list shows no mismatch for it.
 displayTest="IGNORE_ALL_VERSION"
 description='''
