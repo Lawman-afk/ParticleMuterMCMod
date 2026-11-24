@@ -29,6 +29,8 @@ MANUAL = {line.strip() for line in (HERE / "manual.txt").read_text(encoding="utf
 
 DROP = [re.compile(p) for p in (
     r"docs/BACKPORT\.md", r"tools/backport/.*",
+    # The mod page's photographer: main only (the page's pictures come from 26.3).
+    r"src/main/java/dev/particlemuter/devworld/Showcase\.java",
 )]
 OWN = {"build.gradle", "gradle.properties"}
 

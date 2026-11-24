@@ -38,7 +38,7 @@
 
   "particlemuter.particle.minecraft.ambient_entity_effect": "Beacon and conduit swirls",
   "particlemuter.particle.minecraft.angry_villager": "Angry villager",
-  "particlemuter.particle.minecraft.ash": "Basalt delta ash",
+  "particlemuter.particle.minecraft.ash": "Soul sand valley ash",
   "particlemuter.particle.minecraft.block": "Block dust (landing, sprinting)",
   "particlemuter.particle.minecraft.block_crumble": "Crumbling block",
   "particlemuter.particle.minecraft.block_marker": "Barrier and light markers",
@@ -162,7 +162,7 @@
   "particlemuter.particle.minecraft.wax_off": "Wax off",
   "particlemuter.particle.minecraft.wax_on": "Wax on",
   "particlemuter.particle.minecraft.yellow_poplar_leaves": "Poplar leaves, yellow",
-  "particlemuter.particle.minecraft.white_ash": "Soul sand valley ash",
+  "particlemuter.particle.minecraft.white_ash": "Basalt delta ash",
   "particlemuter.particle.minecraft.white_smoke": "White smoke",
   "particlemuter.particle.minecraft.witch": "Witch magic"
 }
