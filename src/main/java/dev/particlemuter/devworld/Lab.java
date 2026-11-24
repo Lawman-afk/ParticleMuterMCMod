@@ -220,7 +220,7 @@ public final class Lab {
                 missing.append(' ').append(e.id);
             }
         }
-        check(types == net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size(), "the catalog lists every particle type (" + types + ")");
+        check(types == net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size(), "the catalog lists every particle type (" + types + " of " + net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.size() + ")");
         check(unnamed == 0, "every vanilla particle has a name of ours" + (unnamed == 0 ? "" : ":" + missing));
     }
 
@@ -385,7 +385,8 @@ public final class Lab {
             screen(mc, "muted", "");
         }));
         list.add(new View("campfires_muted", fires, 0f, -6f, mc -> {
-            mc.gui.screen().onClose();                             // (closing the list takes away the smoke already rising)
+            mc.gui.screen().onClose();
+            Muting.clearLiving();                                  // (as closing the list after muting does: the smoke already rising goes)
             mc.gui.setScreen(null);
         }));
         list.add(new View("campfires_muted_later", fires, 0f, -6f, mc -> {
