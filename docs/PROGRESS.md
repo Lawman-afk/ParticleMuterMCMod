@@ -21,3 +21,4 @@ user's own test and their pick of a logo.
 | Mod page: pictures, banner, CURSEFORGE.md, release jars (build/release) | done |
 | GitHub repository Lawman-afk/ParticleMuterMCMod | done: public, all four branches pushed, topics set, page images load |
 | CurseForge project and upload | the user's (summary sentence and description given) |
+| 1.0.1: any NeoForge/Forge build of each Minecraft version (1.0.0 asked for the newest; the user's ATM10 pack on NeoForge 21.1.250 refused it) | done: Lab 9 of 9 on NeoForge 21.1.250, jars in build/release, pushed |
