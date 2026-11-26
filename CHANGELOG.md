@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Loads on any NeoForge (or Forge) build of its Minecraft version, not only the newest: 1.0.0 asked for the
+  newest and would not load in packs on older ones (All the Mods 10's NeoForge 21.1.250, for one).
+
 ## 1.0.0
 
 - First release: mute any particle, Minecraft's or a mod's, from a button in the survival and creative inventories
